@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="black">#FF000000</color>
+    <color name="white">#FFFFFFFF</color>
+
+<!--    app theme-->
+    <color name="neonPink">#ff00ff</color>
+    <color name="neonRed">#b00020</color>
+    <color name="neonTertiary">#121212</color>
+    <color name="spotifyGreen">#1db954</color>
+    <color name="colorRed">#b00020</color>
+    <color name="colorRed2">#cf6679</color>
+
+<!--    app res-->
+    <color name="colorDismissShadow">#40ff00ff</color>> <!--//#80b00020</color>-->
+</resources>

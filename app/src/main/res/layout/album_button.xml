@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<com.google.android.material.chip.Chip xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    app:closeIcon="@drawable/ic_close_24"
+    app:chipBackgroundColor="@android:color/transparent"
+    app:chipSurfaceColor="@android:color/transparent"
+    android:checkable="false"
+    app:closeIconVisible="false"
+    android:maxWidth="256dp"
+    android:ellipsize="middle"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"></com.google.android.material.chip.Chip>

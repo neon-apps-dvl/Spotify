@@ -1,0 +1,14 @@
+<resources>
+    <string name="app_name">Spotify</string>
+
+    <string name="playlist_selector_info">Tap to add, hold to pin</string>
+    <string name="playlist_selector_add_playlist">New playlist</string>
+
+    <plurals name="playlist_track_count">
+        <item quantity="zero">No tracks</item>
+        <item quantity="one">%d track</item>
+        <item quantity="other">%d tracks</item>
+    </plurals>
+    <!-- TODO: Remove or change this placeholder text -->
+    <string name="hello_blank_fragment">Hello blank fragment</string>
+</resources>

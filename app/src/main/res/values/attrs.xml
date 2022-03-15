@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <declare-styleable name="ComponentAttrs">
+        <attr name="orientation" format="enum">
+            <enum name="horizontal" value="0"/>
+            <enum name="vertical" value="1"/>
+        </attr>
+    </declare-styleable>
+
+    <declare-styleable name="SeekBarAttrs">
+        <attr name="respondToTouch" format="boolean"/>
+        <attr name="snapToTouch" format="boolean"/>
+        <attr name="backgroundColor" format="color"/>
+        <attr name="color" format="color"/>
+    </declare-styleable>
+
+    <declare-styleable name="ProgressBarAttrs">
+        <attr name="viewHeight" format="dimension"/>
+    </declare-styleable>
+</resources>
