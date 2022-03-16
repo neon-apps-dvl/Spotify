@@ -76,7 +76,7 @@
             app:layout_constraintTop_toTopOf="parent" />
     </androidx.constraintlayout.widget.ConstraintLayout>
 
-    <com.pixel.components.listview.ListView
+    <neon.pixel.components.listview.ListView
         android:id="@+id/playlist_list_view"
         android:layout_width="match_parent"
         android:layout_height="0dp"

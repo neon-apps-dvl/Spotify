@@ -27,7 +27,7 @@
         app:layout_constraintTop_toBottomOf="@id/seek_bar"
         android:background="@android:color/transparent"/>
 
-    <com.pixel.components.seekbar.SeekBar
+    <com.pixel.spotify.ui.SeekBar
         android:id="@+id/seek_bar"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
