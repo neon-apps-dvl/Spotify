@@ -1,6 +1,6 @@
 package com.pixel.spotify.ui;
 
-import static com.pixel.components.Components.getPx;
+import static neon.pixel.components.Components.getPx;
 
 import android.animation.ArgbEvaluator;
 import android.animation.ValueAnimator;
@@ -17,8 +17,9 @@ import androidx.annotation.FloatRange;
 import androidx.annotation.Nullable;
 import androidx.coordinatorlayout.widget.CoordinatorLayout;
 
-import com.pixel.components.color.Hct;
 import com.pixel.spotify.R;
+
+import neon.pixel.components.color.Hct;
 
 public class SeekBar extends CoordinatorLayout {
     CoordinatorLayout viewContainer;

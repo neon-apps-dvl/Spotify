@@ -31,8 +31,6 @@ import androidx.core.view.WindowInsetsCompat;
 import androidx.fragment.app.Fragment;
 import androidx.palette.graphics.Palette;
 
-import com.pixel.components.bitmap.BitmapTools;
-import com.pixel.components.color.Hct;
 import com.pixel.spotify.OnUiStateChangedListener;
 import com.pixel.spotify.R;
 import com.pixel.spotify.spotify.adapter.SpotifyServiceAdapter;
@@ -47,6 +45,9 @@ import com.pixel.spotify.ui.UiState;
 import com.pixel.spotifyapi.SpotifyService;
 
 import java.util.List;
+
+import neon.pixel.components.bitmap.BitmapTools;
+import neon.pixel.components.color.Hct;
 
 public class MainFragment extends Fragment {
     private static final String TAG = "Drag";

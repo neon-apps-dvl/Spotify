@@ -2,11 +2,11 @@ package com.pixel.spotify.spotify.models;
 
 import android.graphics.Bitmap;
 
-import com.pixel.components.bitmap.SerializableBitmap;
-
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
+
+import neon.pixel.components.bitmap.SerializableBitmap;
 
 public class SerializableTrackModel implements Serializable {
     public String id;

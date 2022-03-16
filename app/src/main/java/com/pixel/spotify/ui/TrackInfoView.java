@@ -1,6 +1,6 @@
 package com.pixel.spotify.ui;
 
-import static com.pixel.components.Components.getPx;
+import static neon.pixel.components.Components.getPx;
 
 import android.animation.ArgbEvaluator;
 import android.animation.ValueAnimator;
@@ -22,8 +22,9 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.constraintlayout.widget.ConstraintLayout;
 
-import com.pixel.components.color.Hct;
 import com.pixel.spotify.R;
+
+import neon.pixel.components.color.Hct;
 
 public class TrackInfoView extends ConstraintLayout {
     @LayoutRes

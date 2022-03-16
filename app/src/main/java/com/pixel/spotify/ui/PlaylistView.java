@@ -1,6 +1,6 @@
 package com.pixel.spotify.ui;
 
-import static com.pixel.components.Components.getPx;
+import static neon.pixel.components.Components.getPx;
 
 import android.content.Context;
 import android.view.LayoutInflater;

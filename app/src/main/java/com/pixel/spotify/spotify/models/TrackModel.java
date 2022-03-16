@@ -3,8 +3,8 @@ package com.pixel.spotify.spotify.models;
 import android.graphics.Bitmap;
 import android.util.Log;
 
-import com.pixel.components.bitmap.BitmapTools;
-import com.pixel.components.bitmap.SerializableBitmap;
+import neon.pixel.components.bitmap.BitmapTools;
+import neon.pixel.components.bitmap.SerializableBitmap;
 import com.pixel.spotify.spotify.adapter.SpotifyServiceManagerCallback;
 import com.pixel.spotifyapi.Objects.Artist;
 import com.pixel.spotifyapi.Objects.ArtistSimple;

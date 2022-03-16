@@ -1,6 +1,6 @@
 package com.pixel.spotify.ui;
 
-import static com.pixel.components.Components.getPx;
+import static neon.pixel.components.Components.getPx;
 
 import android.animation.ValueAnimator;
 import android.content.Context;
@@ -19,8 +19,9 @@ import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
 
 import com.google.android.material.button.MaterialButton;
-import com.pixel.components.backdrop.Backdrop;
 import com.pixel.spotify.R;
+
+import neon.pixel.components.backdrop.Backdrop;
 
 public class MainBackdrop extends Backdrop {
     private static final int BACK_VIEW_PADDING_DP = 24;
@@ -49,7 +50,7 @@ public class MainBackdrop extends Backdrop {
         mMenuButton = (MaterialButton) LayoutInflater.from (getContext ()).inflate (R.layout.menu_button, null);
 //        mMenuButton.setY (200);
         mMenuButton.setOnClickListener (v -> {
-            if (! mIsOpen) open ();
+            if (!mIsOpen) open ();
             else close ();
 
             if (mListener != null) mListener.onStateChanged (mIsOpen);
@@ -124,7 +125,8 @@ public class MainBackdrop extends Backdrop {
 
                 int b = (int) (offset / mMaxOffset * getWidth () / 8);
 
-                if (b > 0) mView.setRenderEffect (RenderEffect.createBlurEffect (b, b, Shader.TileMode.CLAMP));
+                if (b > 0)
+                    mView.setRenderEffect (RenderEffect.createBlurEffect (b, b, Shader.TileMode.CLAMP));
                 else mView.setRenderEffect (null);
             }
         });
@@ -149,7 +151,8 @@ public class MainBackdrop extends Backdrop {
 
                 int b = (int) (offset / mMaxOffset * getWidth () / 8);
 
-                if (b > 0) mView.setRenderEffect (RenderEffect.createBlurEffect (b, b, Shader.TileMode.CLAMP));
+                if (b > 0)
+                    mView.setRenderEffect (RenderEffect.createBlurEffect (b, b, Shader.TileMode.CLAMP));
                 else mView.setRenderEffect (null);
             }
         });

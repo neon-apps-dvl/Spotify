@@ -1,8 +1,8 @@
 package com.pixel.spotify.ui;
 
-import static com.pixel.components.Components.getPx;
 import static com.pixel.spotify.ui.color.Color.DynamicTone.PRIMARY;
 import static com.pixel.spotify.ui.color.Color.DynamicTone.SECONDARY;
+import static neon.pixel.components.Components.getPx;
 
 import android.animation.ValueAnimator;
 import android.content.Context;
@@ -21,8 +21,9 @@ import androidx.annotation.NonNull;
 import androidx.constraintlayout.widget.ConstraintLayout;
 import androidx.coordinatorlayout.widget.CoordinatorLayout;
 
-import com.pixel.components.color.Hct;
 import com.pixel.spotify.R;
+
+import neon.pixel.components.color.Hct;
 
 public class AlbumButton extends ConstraintLayout {
     @LayoutRes

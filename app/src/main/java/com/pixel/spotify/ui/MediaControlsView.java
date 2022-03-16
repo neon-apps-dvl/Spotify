@@ -9,8 +9,9 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.constraintlayout.widget.ConstraintLayout;
 
-import com.pixel.components.seekbar.SeekBar;
 import com.pixel.spotify.R;
+
+import neon.pixel.components.seekbar.SeekBar;
 
 public class MediaControlsView extends ConstraintLayout {
     public static final int REQUEST_SUCCESS = 0;

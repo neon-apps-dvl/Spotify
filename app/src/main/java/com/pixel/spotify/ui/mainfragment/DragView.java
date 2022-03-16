@@ -1,8 +1,8 @@
 package com.pixel.spotify.ui.mainfragment;
 
-import static com.pixel.components.Components.getPx;
 import static com.pixel.spotify.ui.color.Color.DynamicTone.PRIMARY;
 import static com.pixel.spotify.ui.color.Color.DynamicTone.SECONDARY;
+import static neon.pixel.components.Components.getPx;
 
 import android.animation.Animator;
 import android.animation.AnimatorListenerAdapter;
@@ -30,7 +30,6 @@ import androidx.dynamicanimation.animation.FlingAnimation;
 import androidx.palette.graphics.Palette;
 
 import com.google.android.material.button.MaterialButton;
-import com.pixel.components.color.Hct;
 import com.pixel.spotify.R;
 import com.pixel.spotify.spotify.models.Playlists;
 import com.pixel.spotify.spotify.models.TrackModel;
@@ -39,6 +38,8 @@ import com.pixel.spotify.ui.PlaylistSelector;
 import com.pixel.spotify.ui.SeekBar;
 import com.pixel.spotify.ui.TrackInfoView;
 import com.pixel.spotify.ui.TrackView;
+
+import neon.pixel.components.color.Hct;
 
 public class DragView extends CoordinatorLayout {
     private static final String TAG = "DragView";
