@@ -28,7 +28,8 @@ import com.pixel.spotify.spotify.models.UserModel;
 import com.pixel.spotify.ui.DynamicTheme;
 import com.pixel.spotify.ui.MainBackdrop;
 import com.pixel.spotify.ui.UiState;
-import com.pixel.spotify.ui.color.ColorProvider;
+import com.pixel.spotify.ui.color.ColorProfile;
+import com.pixel.spotify.ui.mainfragment.MainFragment;
 import com.pixel.spotifyapi.Objects.UserPrivate;
 import com.pixel.spotifyapi.SpotifyApi;
 import com.pixel.spotifyapi.SpotifyCallback;
@@ -248,7 +249,7 @@ public class MainActivity extends AppCompatActivity implements OnUiStateChangedL
     }
 
     public void createDynamicTheme () {
-        DynamicTheme.newInstance (UI_THEME, ColorProvider.class);
+        DynamicTheme.newInstance (UI_THEME, ColorProfile.class);
     }
 
     public void auth () {

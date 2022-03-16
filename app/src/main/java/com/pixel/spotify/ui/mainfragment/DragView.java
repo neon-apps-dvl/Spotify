@@ -1,4 +1,4 @@
-package com.pixel.spotify.ui;
+package com.pixel.spotify.ui.mainfragment;
 
 import static com.pixel.components.Components.getPx;
 import static com.pixel.spotify.ui.color.Color.DynamicTone.PRIMARY;
@@ -31,10 +31,14 @@ import androidx.palette.graphics.Palette;
 
 import com.google.android.material.button.MaterialButton;
 import com.pixel.components.color.Hct;
-import com.pixel.spotify.MainFragment;
 import com.pixel.spotify.R;
 import com.pixel.spotify.spotify.models.Playlists;
 import com.pixel.spotify.spotify.models.TrackModel;
+import com.pixel.spotify.ui.AlbumButton;
+import com.pixel.spotify.ui.PlaylistSelector;
+import com.pixel.spotify.ui.SeekBar;
+import com.pixel.spotify.ui.TrackInfoView;
+import com.pixel.spotify.ui.TrackView;
 
 public class DragView extends CoordinatorLayout {
     private static final String TAG = "DragView";

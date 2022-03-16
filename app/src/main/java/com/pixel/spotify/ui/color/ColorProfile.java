@@ -1,6 +1,6 @@
 package com.pixel.spotify.ui.color;
 
-public enum ColorProvider {
+public enum ColorProfile {
     SURFACE,
     PRIMARY,
     SECONDARY

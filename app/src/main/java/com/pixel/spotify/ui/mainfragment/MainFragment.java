@@ -1,4 +1,4 @@
-package com.pixel.spotify;
+package com.pixel.spotify.ui.mainfragment;
 
 import android.animation.Animator;
 import android.animation.AnimatorListenerAdapter;
@@ -33,13 +33,14 @@ import androidx.palette.graphics.Palette;
 
 import com.pixel.components.bitmap.BitmapTools;
 import com.pixel.components.color.Hct;
+import com.pixel.spotify.OnUiStateChangedListener;
+import com.pixel.spotify.R;
 import com.pixel.spotify.spotify.adapter.SpotifyServiceAdapter;
 import com.pixel.spotify.spotify.adapter.SpotifyServiceManagerCallback;
 import com.pixel.spotify.spotify.models.PlaylistModel;
 import com.pixel.spotify.spotify.models.Playlists;
 import com.pixel.spotify.spotify.models.TrackModel;
 import com.pixel.spotify.spotify.models.UserModel;
-import com.pixel.spotify.ui.DragView;
 import com.pixel.spotify.ui.PlaylistView;
 import com.pixel.spotify.ui.TrackView;
 import com.pixel.spotify.ui.UiState;
