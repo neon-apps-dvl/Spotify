@@ -7,16 +7,10 @@
     android:orientation="vertical">
 
     <androidx.coordinatorlayout.widget.CoordinatorLayout
-        android:id="@+id/media_controls_container"
+        android:id="@+id/ui_container"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:background="@android:color/transparent" />
-
-    <androidx.constraintlayout.widget.ConstraintLayout
-        android:id="@+id/album_button_wrapper"
-        android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:background="@android:color/transparent"/>
 
     <com.google.android.material.button.MaterialButton
         android:id="@+id/select_playlist_button"

@@ -1,5 +1,11 @@
 package com.pixel.spotify.ui.mainfragment;
 
+import static com.pixel.spotify.ui.color.Color.DynamicTone.PRIMARY;
+import static com.pixel.spotify.ui.color.Color.DynamicTone.SECONDARY;
+import static com.pixel.spotify.ui.color.Color.DynamicTone.SURFACE;
+import static com.pixel.spotify.ui.color.Color.UI_THEME;
+import static neon.pixel.components.Components.getPx;
+
 import android.animation.Animator;
 import android.animation.AnimatorListenerAdapter;
 import android.animation.ArgbEvaluator;
@@ -18,6 +24,7 @@ import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.ViewPropertyAnimator;
 
 import androidx.annotation.LayoutRes;
 import androidx.annotation.NonNull;
@@ -42,10 +49,13 @@ import com.pixel.spotify.spotify.models.UserModel;
 import com.pixel.spotify.ui.PlaylistView;
 import com.pixel.spotify.ui.TrackView;
 import com.pixel.spotify.ui.UiState;
+import com.pixel.spotify.ui.color.ColorProfile;
 import com.pixel.spotifyapi.SpotifyService;
 
 import java.util.List;
 
+import neon.pixel.components.android.dynamictheme.DynamicTheme;
+import neon.pixel.components.android.theme.Theme;
 import neon.pixel.components.bitmap.BitmapTools;
 import neon.pixel.components.color.Hct;
 
@@ -56,36 +66,41 @@ public class MainFragment extends Fragment {
     @LayoutRes
     private static final int LAYOUT = R.layout.fragment_main;
 
-    private SpotifyService spotifyService;
+    private SpotifyService mSpotifyService;
 
-    private CoordinatorLayout surfaceView;
-    private CoordinatorLayout playlistViewContainer;
-    private View overlay;
-    private int overlayColor;
+    private CoordinatorLayout mSurfaceView;
+    private CoordinatorLayout mPlaylistViewContainer;
+    private View mSurfaceViewOverlay;
+    private int mSurfaceViewOverlayColor;
 
-    private PlaylistView playlistView;
-    private DragView dragView;
+    private PlaylistView mPlaylistView;
+    private DragView mDragView;
 
-    private UserModel user;
+    private UserModel mUser;
 
-    private TrackModel track;
-    private int selected;
-    private List <PlaylistModel> playlists;
+    private TrackModel mTrack;
+    private int mSelected;
+    private List <PlaylistModel> mPlaylists;
 
-    private Object postTrackLock;
+    private Object mPostTrackLock;
 
-    private int baseThemeColor;
-    private int foregroundThemeColor;
-    private int backgroundThemeColor;
+    private int mBaseThemeColor;
+    private int mColorPrimary;
+    private int mColorSecondary;
+    private int mColorSurface;
+
+    private boolean mIsPlaylistViewHidden = true;
+    private boolean mIsPlaylistViewPeeking = false;
+    private boolean mIsPlaylistViewShowing = false;
 
     private OnUiStateChangedListener mOnUiStateChangedListener;
 
     public MainFragment (SpotifyService spotifyService) {
-        this.spotifyService = spotifyService;
+        mSpotifyService = spotifyService;
     }
 
     public void setSpotifyService (SpotifyService spotifyService) {
-        this.spotifyService = spotifyService;
+        mSpotifyService = spotifyService;
     }
 
     @Override
@@ -104,23 +119,23 @@ public class MainFragment extends Fragment {
     public void onViewCreated (@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated (view, savedInstanceState);
 
-        surfaceView = view.findViewById (R.id.surface_view);
-        playlistViewContainer = view.findViewById (R.id.playlist_view_container);
-        overlay = view.findViewById (R.id.overlay);//new View (getContext ());
-        overlay.setBackgroundColor (0);
+        mSurfaceView = view.findViewById (R.id.surface_view);
+        mPlaylistViewContainer = view.findViewById (R.id.playlist_view_container);
+        mSurfaceViewOverlay = view.findViewById (R.id.overlay);//new View (getContext ());
+        mSurfaceViewOverlay.setBackgroundColor (0);
 
-        playlistView = new PlaylistView (getContext ());
-        playlistViewContainer.addView (playlistView);
+        mPlaylistView = new PlaylistView (getContext ());
+        mPlaylistViewContainer.addView (mPlaylistView);
 
-        dragView = new DragView (getContext (), this);
-        dragView.setInteractionListener (new DragView.InteractionListener () {
+        mDragView = new DragView (getContext (), this);
+        mDragView.setMainFragmentInteractionListener (new DragView.InteractionListener () {
             @Override
             public void onPositionChanged (TrackView v, float x, float y, float scaleX, float scaleY, float stretchX, float stretchY, boolean down) {
                 float stretch = 0.5f * stretchY;
 
-                float viewY = dragView.getY () + dragView.getHeight () / 2 + (stretch * dragView.getHeight () / 2) - playlistView.getHeight () / 2;
+                float viewY = mDragView.getY () + mDragView.getHeight () / 2 + (stretch * mDragView.getHeight () / 2) - mPlaylistView.getHeight () / 2;
 
-                playlistView.setY (viewY);
+                mPlaylistView.setY (viewY);
             }
         });
 
@@ -129,13 +144,13 @@ public class MainFragment extends Fragment {
             public WindowInsetsCompat onApplyWindowInsets (View v, WindowInsetsCompat windowInsets) {
                 Insets insets = windowInsets.getInsets (WindowInsetsCompat.Type.systemBars ());
 
-                ViewGroup.MarginLayoutParams params = (ViewGroup.MarginLayoutParams) dragView.getLayoutParams ();
+                ViewGroup.MarginLayoutParams params = (ViewGroup.MarginLayoutParams) mDragView.getLayoutParams ();
                 params.leftMargin = insets.left;
                 params.rightMargin = insets.right;
                 params.topMargin = insets.top;
                 params.bottomMargin = insets.bottom;
 
-                dragView.setLayoutParams (params);
+                mDragView.setLayoutParams (params);
 
                 ViewGroup.MarginLayoutParams menuButtonParams = new ViewGroup.MarginLayoutParams (50, 50);
                 menuButtonParams.topMargin = insets.top;
@@ -144,7 +159,7 @@ public class MainFragment extends Fragment {
             }
         });
 
-        ((ConstraintLayout) view).addView (dragView);
+        ((ConstraintLayout) view).addView (mDragView);
     }
 
     @Override
@@ -153,18 +168,87 @@ public class MainFragment extends Fragment {
 
         View view = getView ();
 
-        playlistView.setX (view.getWidth ());
-        playlistView.setY (dragView.getY () + dragView.getHeight () / 2);
+        mPlaylistView.setX (view.getWidth ());
+        mPlaylistView.setY (mDragView.getY () + mDragView.getHeight () / 2);
+
+        DynamicTheme.addOnThemeChangedListener (UI_THEME, mDragView);
+    }
+
+    public void setUser (UserModel user) {
+        this.mUser = user;
+    }
+
+    public void setTrack (TrackModel track) {
+        this.mTrack = track;
+        mDragView.seekTo (1);
+
+        mDragView.updateTrack (track);
+    }
+
+    public void setPlaylists (int selected, Playlists playlists) {
+        this.mSelected = selected;
+        this.mPlaylists = playlists.items;
+
+        mDragView.setPlaylists (selected, playlists);
+        mPlaylistView.setPlaylist (playlists.items.get (selected));
+    }
+
+    public void setSelected (PlaylistModel playlist) {
+        mSelected = mPlaylists.indexOf (playlist);
+        mPlaylistView.setPlaylist (playlist);
+
+        SharedPreferences prefs = getContext ().getSharedPreferences (mUser.id, Context.MODE_PRIVATE);
+        prefs.edit ()
+                .putString ("mSelected", playlist.id)
+                .commit ();
+    }
+
+    public void pushSelected () {
+        push (mPlaylists.get (mSelected));
+    }
+
+    int c = 0;
+
+    public void push (PlaylistModel playlist) {
+        c = c + 1;
+        if (c == 7) c = 0;
+
+        if (mPostTrackLock == null) {
+            mPostTrackLock = new Object ();
+
+            SpotifyServiceAdapter.addTrack (mSpotifyService, mUser.id, playlist.id, mTrack.uri, new SpotifyServiceManagerCallback () {
+                @Override
+                public void onPostTrack () {
+                    SpotifyServiceAdapter.getTrack (mSpotifyService, mUser.id, c, new SpotifyServiceManagerCallback () {
+                        @Override
+                        public void onGetTrack (TrackModel trackModel) {
+                            getActivity ().runOnUiThread (() -> {
+                                setTrack (trackModel);
+                                updateTheme ();
+                                mPostTrackLock = null;
+                            });
+
+                        }
+                    });
+                }
+            });
+        }
+    }
+
+    public void setEnabled (boolean enabled) {
+        mDragView.setEnabled (enabled);
     }
 
     public void setUiStateChangedListener (OnUiStateChangedListener l) {
         mOnUiStateChangedListener = l;
     }
 
-    public void requestHideUi () {
-        if (mOnUiStateChangedListener != null) {
-            mOnUiStateChangedListener.onUiStateChanged (UiState.HIDDEN);
-        }
+    public void open (String what) {
+        Intent i = new Intent (Intent.ACTION_VIEW);
+        i.setData (Uri.parse (what));
+        i.putExtra (Intent.EXTRA_REFERRER, "android-app://" + getContext ().getPackageName ());
+
+        startActivity (i);
     }
 
     public void requestShowUi () {
@@ -175,133 +259,64 @@ public class MainFragment extends Fragment {
         }
     }
 
-    public void setEnabled (boolean enabled) {
-        dragView.setEnabled (enabled);
-    }
-
-    int c = 0;
-
-    public void add () {
-        add (playlists.get (selected));
-    }
-
-    public void add (PlaylistModel playlist) {
-        c = c + 1;
-        if (c == 7) c = 0;
-
-        if (postTrackLock == null) {
-            postTrackLock = new Object ();
-
-            SpotifyServiceAdapter.addTrack (spotifyService, user.id, playlist.id, track.uri, new SpotifyServiceManagerCallback () {
-                @Override
-                public void onPostTrack () {
-                    SpotifyServiceAdapter.getTrack (spotifyService, user.id, c, new SpotifyServiceManagerCallback () {
-                        @Override
-                        public void onGetTrack (TrackModel trackModel) {
-                            getActivity ().runOnUiThread (() -> {
-                                setTrack (trackModel);
-                                updateTheme ();
-                                postTrackLock = null;
-                            });
-
-                        }
-                    });
-                }
-            });
+    public void requestHideUi () {
+        if (mOnUiStateChangedListener != null) {
+            mOnUiStateChangedListener.onUiStateChanged (UiState.HIDDEN);
         }
     }
 
-
-    public void open (String what) {
-        Intent i = new Intent (Intent.ACTION_VIEW);
-        i.setData (Uri.parse (what));
-        i.putExtra (Intent.EXTRA_REFERRER, "android-app://" + getContext ().getPackageName ());
-
-        startActivity (i);
-    }
-
     public void updateTheme () {
-        Bitmap thumbnail = track.thumbnails.get (0);
+        Bitmap thumbnail = mTrack.thumbnails.get (0);
 
-        getTrackThemeColors (thumbnail);
+        setThemeColors (thumbnail);
 
-        setBackground (thumbnail);
+        Theme theme = DynamicTheme.getTheme (UI_THEME);
+        theme.setColor (ColorProfile.SURFACE, mColorSurface);
+        theme.setColor (ColorProfile.PRIMARY, mColorPrimary);
+        theme.setColor (ColorProfile.SECONDARY, mColorSecondary);
+        DynamicTheme.notifyThemeChanged (UI_THEME);
+
+        setSurfaceView (thumbnail);
 
         glow ();
 
-        dragView.seekTo (1);
-        dragView.setTheme (baseThemeColor);
+        mDragView.seekTo (1);
+        mDragView.setTheme (mBaseThemeColor);
     }
 
-    public void setSelected (PlaylistModel playlist) {
-        selected = playlists.indexOf (playlist);
-        playlistView.setPlaylist (playlist);
+    private void setThemeColors (Bitmap thumbnail) {
+        Palette themeColors = Palette.from (thumbnail).generate ();
 
-        SharedPreferences prefs = getContext ().getSharedPreferences (user.id, Context.MODE_PRIVATE);
-        prefs.edit ()
-                .putString ("selected", playlist.id)
-                .commit ();
+        mBaseThemeColor = themeColors.getDominantSwatch ().getRgb ();
+
+        Hct hct = Hct.fromInt (mBaseThemeColor);
+        hct.setTone (SURFACE);
+        mColorSurface = hct.toInt ();
+
+        hct = Hct.fromInt (mBaseThemeColor);
+        hct.setTone (PRIMARY);
+        mColorPrimary = hct.toInt ();
+
+        hct = Hct.fromInt (mBaseThemeColor);
+        hct.setTone (SECONDARY);
+        mColorSurface = hct.toInt ();
     }
 
-    public void setUser (UserModel user) {
-        this.user = user;
-    }
-
-    public void setTrack (TrackModel track) {
-        this.track = track;
-        dragView.seekTo (1);
-
-        dragView.updateTrack (track);
-    }
-
-    public void setPlaylists (int selected, Playlists playlists) {
-        this.selected = selected;
-        this.playlists = playlists.items;
-
-        dragView.setPlaylists (selected, playlists);
-        playlistView.setPlaylist (playlists.items.get (selected));
-    }
-
-    ValueAnimator xAnimator;
-    ValueAnimator scaleAnimator;
-
-    boolean isHidden = true;
-    boolean isPeeking = false;
-    boolean isShowing = false;
-
-    private ValueAnimator animator;
-
-    public void getTrackThemeColors (Bitmap track) {
-        Palette themeColors = Palette.from (track).generate ();
-
-        baseThemeColor = themeColors.getDominantSwatch ().getRgb ();
-
-        Hct backgroundThemeColorHct = Hct.fromInt (baseThemeColor);
-        backgroundThemeColorHct.setTone (20);
-
-        backgroundThemeColor = backgroundThemeColorHct.toInt ();
-
-        Hct foregroundThemeColorHct = Hct.fromInt (baseThemeColor);
-        foregroundThemeColorHct.setTone (80);
-
-        foregroundThemeColor = foregroundThemeColorHct.toInt ();
-    }
-
-    private void glow (int color) {
-        animator = ValueAnimator.ofObject (new ArgbEvaluator (), overlayColor, color);
-        animator.setDuration (getResources ().getInteger (android.R.integer.config_shortAnimTime));
-        animator.addUpdateListener (new ValueAnimator.AnimatorUpdateListener () {
+    private void setSurfaceViewOverlayColor (int color) {
+        ValueAnimator surfaceViewOverlayColorAnimator = ValueAnimator.ofObject (new ArgbEvaluator (), mSurfaceViewOverlayColor, color);
+        surfaceViewOverlayColorAnimator.setDuration (getResources ().getInteger (android.R.integer.config_shortAnimTime));
+        surfaceViewOverlayColorAnimator.addUpdateListener (new ValueAnimator.AnimatorUpdateListener () {
             @Override
             public void onAnimationUpdate (ValueAnimator animation) {
-                Color c = Color.valueOf ((Integer) animator.getAnimatedValue ());
+                Color c = Color.valueOf ((Integer) surfaceViewOverlayColorAnimator.getAnimatedValue ());
 
-                overlayColor = Color.argb (128, c.red (), c.green (), c.blue ());
+                mSurfaceViewOverlayColor = Color.argb (128, c.red (), c.green (), c.blue ());
 
-                overlay.setBackgroundColor (overlayColor);
+                mSurfaceViewOverlay.setBackgroundColor (mSurfaceViewOverlayColor);
             }
         });
 
-        animator.start ();
+        surfaceViewOverlayColorAnimator.start ();
     }
 
     private boolean isDefault = false;
@@ -311,7 +326,7 @@ public class MainFragment extends Fragment {
 
         isDefault = true;
 
-        glow (backgroundThemeColor);
+        setSurfaceViewOverlayColor (mColorSurface);
     }
 
     public void glowRed () {
@@ -319,26 +334,26 @@ public class MainFragment extends Fragment {
 
         isDefault = false;
 
-        glow (Color.RED);
+        setSurfaceViewOverlayColor (Color.RED);
     }
 
-    public void setBackground (Bitmap bitmap) {
+    private void setSurfaceView (Bitmap bitmap) {
         CoordinatorLayout surfaceViewOverlay = new CoordinatorLayout (getContext ());
         surfaceViewOverlay.setLayoutParams (new ConstraintLayout.LayoutParams (-1, -1));
-        surfaceViewOverlay.setBackground (surfaceView.getBackground ());
-        surfaceViewOverlay.setRenderEffect (RenderEffect.createBlurEffect (surfaceView.getHeight () / 8, surfaceView.getHeight () / 8, Shader.TileMode.CLAMP));
+        surfaceViewOverlay.setBackground (mSurfaceView.getBackground ());
+        surfaceViewOverlay.setRenderEffect (RenderEffect.createBlurEffect (mSurfaceView.getHeight () / 8, mSurfaceView.getHeight () / 8, Shader.TileMode.CLAMP));
 
-        surfaceView.addView (surfaceViewOverlay);
+        mSurfaceView.addView (surfaceViewOverlay);
 
         surfaceViewOverlay.setAlpha (1f);
 
-        float w = (float) surfaceView.getWidth () / (float) surfaceView.getHeight () * bitmap.getHeight ();
+        float w = (float) mSurfaceView.getWidth () / (float) mSurfaceView.getHeight () * bitmap.getHeight ();
         float x = (bitmap.getWidth () - w) / 2;
 
         Bitmap resizedBitmap = BitmapTools.from (bitmap, (int) x, 0, (int) w, bitmap.getHeight ());
 
-        surfaceView.setBackground (new BitmapDrawable (getResources (), resizedBitmap));
-        surfaceView.setRenderEffect (RenderEffect.createBlurEffect (surfaceView.getHeight () / 8, surfaceView.getHeight () / 8, Shader.TileMode.CLAMP));
+        mSurfaceView.setBackground (new BitmapDrawable (getResources (), resizedBitmap));
+        mSurfaceView.setRenderEffect (RenderEffect.createBlurEffect (mSurfaceView.getHeight () / 8, mSurfaceView.getHeight () / 8, Shader.TileMode.CLAMP));
 
         surfaceViewOverlay.animate ()
                 .alpha (0f)
@@ -346,35 +361,96 @@ public class MainFragment extends Fragment {
                 .setListener (new AnimatorListenerAdapter () {
                     @Override
                     public void onAnimationEnd (Animator animation) {
-                        surfaceView.removeView (surfaceViewOverlay);
+                        mSurfaceView.removeView (surfaceViewOverlay);
                     }
                 })
                 .start ();
     }
 
-    public void peekPlaylist () {
-        if (isPeeking) return;
+    public void peekPlaylistView () {
+        if (mIsPlaylistViewPeeking) return;
 
-        isShowing = false;
-        isPeeking = true;
-        isHidden = false;
+        mIsPlaylistViewShowing = false;
+        mIsPlaylistViewPeeking = true;
+        mIsPlaylistViewHidden = false;
 
-        xAnimator = ValueAnimator.ofFloat (playlistView.getX (), dragView.getWidth () - 100);
+        ViewPropertyAnimator playlistViewPositionAnimator = mPlaylistView.animate ()
+                .x (mDragView.getWidth () - getPx (getContext (), 64))
+                .setDuration (getResources ().getInteger (android.R.integer.config_shortAnimTime));
+
+        ViewPropertyAnimator playlistViewScaleAnimator = mPlaylistView.animate ()
+                .setDuration (getResources ().getInteger (android.R.integer.config_shortAnimTime))
+                .scaleX (1)
+                .scaleY (1);
+
+        playlistViewPositionAnimator.start ();
+        playlistViewScaleAnimator.start ();
+    }
+
+    public void showPlaylistView () {
+        if (mIsPlaylistViewShowing) return;
+
+        mIsPlaylistViewShowing = true;
+        mIsPlaylistViewPeeking = false;
+        mIsPlaylistViewHidden = false;
+
+        ViewPropertyAnimator playlistViewPositionAnimator = mPlaylistView.animate ()
+                .x (mDragView.getWidth () - mPlaylistView.getWidth ())
+                .setDuration (getResources ().getInteger (android.R.integer.config_shortAnimTime));
+
+        ViewPropertyAnimator playlistViewScaleAnimator = mPlaylistView.animate ()
+                .setDuration (getResources ().getInteger (android.R.integer.config_shortAnimTime))
+                .scaleX (1.25f)
+                .scaleY (1.25f);
+
+        playlistViewPositionAnimator.start ();
+        playlistViewScaleAnimator.start ();
+    }
+
+    public void hidePlaylistView () {
+        if (mIsPlaylistViewHidden) return;
+
+        mIsPlaylistViewShowing = false;
+        mIsPlaylistViewPeeking = false;
+        mIsPlaylistViewHidden = true;
+
+        ViewPropertyAnimator playlistViewPositionAnimator = mPlaylistView.animate ()
+                .x (mDragView.getWidth ())
+                .setDuration (getResources ().getInteger (android.R.integer.config_shortAnimTime));
+
+        ViewPropertyAnimator playlistViewScaleAnimator = mPlaylistView.animate ()
+                .setDuration (getResources ().getInteger (android.R.integer.config_shortAnimTime))
+                .scaleX (1)
+                .scaleY (1);
+
+        playlistViewPositionAnimator.start ();
+        playlistViewScaleAnimator.start ();
+    }
+
+    @Deprecated
+    public void peekPlaylistViewObject () {
+        if (mIsPlaylistViewPeeking) return;
+
+        mIsPlaylistViewShowing = false;
+        mIsPlaylistViewPeeking = true;
+        mIsPlaylistViewHidden = false;
+
+        ValueAnimator xAnimator = ValueAnimator.ofFloat (mPlaylistView.getX (), mDragView.getWidth () - 100);
         xAnimator.setDuration (getResources ().getInteger (android.R.integer.config_shortAnimTime));
         xAnimator.addUpdateListener (new ValueAnimator.AnimatorUpdateListener () {
             @Override
             public void onAnimationUpdate (ValueAnimator animation) {
-                playlistView.setX ((Float) animation.getAnimatedValue ());
+                mPlaylistView.setX ((Float) animation.getAnimatedValue ());
             }
         });
 
-        scaleAnimator = ValueAnimator.ofFloat (playlistView.getScaleX (), 1f);
+        ValueAnimator scaleAnimator = ValueAnimator.ofFloat (mPlaylistView.getScaleX (), 1f);
         scaleAnimator.setDuration (getResources ().getInteger (android.R.integer.config_shortAnimTime));
         scaleAnimator.addUpdateListener (new ValueAnimator.AnimatorUpdateListener () {
             @Override
             public void onAnimationUpdate (ValueAnimator animation) {
-                playlistView.setScaleX ((Float) animation.getAnimatedValue ());
-                playlistView.setScaleY ((Float) animation.getAnimatedValue ());
+                mPlaylistView.setScaleX ((Float) animation.getAnimatedValue ());
+                mPlaylistView.setScaleY ((Float) animation.getAnimatedValue ());
             }
         });
 
@@ -382,29 +458,30 @@ public class MainFragment extends Fragment {
         xAnimator.start ();
     }
 
-    public void showPlaylist () {
-        if (isShowing) return;
+    @Deprecated
+    public void showPlaylistViewObject () {
+        if (mIsPlaylistViewShowing) return;
 
-        isShowing = true;
-        isPeeking = false;
-        isHidden = false;
+        mIsPlaylistViewShowing = true;
+        mIsPlaylistViewPeeking = false;
+        mIsPlaylistViewHidden = false;
 
-        xAnimator = ValueAnimator.ofFloat (playlistView.getX (), dragView.getWidth () - playlistView.getWidth ());
+        ValueAnimator xAnimator = ValueAnimator.ofFloat (mPlaylistView.getX (), mDragView.getWidth () - mPlaylistView.getWidth ());
         xAnimator.setDuration (getResources ().getInteger (android.R.integer.config_shortAnimTime));
         xAnimator.addUpdateListener (new ValueAnimator.AnimatorUpdateListener () {
             @Override
             public void onAnimationUpdate (ValueAnimator animation) {
-                playlistView.setX ((Float) animation.getAnimatedValue ());
+                mPlaylistView.setX ((Float) animation.getAnimatedValue ());
             }
         });
 
-        scaleAnimator = ValueAnimator.ofFloat (playlistView.getScaleX (), 1.25f);
+        ValueAnimator scaleAnimator = ValueAnimator.ofFloat (mPlaylistView.getScaleX (), 1.25f);
         scaleAnimator.setDuration (getResources ().getInteger (android.R.integer.config_shortAnimTime));
         scaleAnimator.addUpdateListener (new ValueAnimator.AnimatorUpdateListener () {
             @Override
             public void onAnimationUpdate (ValueAnimator animation) {
-                playlistView.setScaleX ((Float) animation.getAnimatedValue ());
-                playlistView.setScaleY ((Float) animation.getAnimatedValue ());
+                mPlaylistView.setScaleX ((Float) animation.getAnimatedValue ());
+                mPlaylistView.setScaleY ((Float) animation.getAnimatedValue ());
             }
         });
 
@@ -412,19 +489,20 @@ public class MainFragment extends Fragment {
         xAnimator.start ();
     }
 
-    public void hidePlaylist () {
-        if (isHidden) return;
+    @Deprecated
+    public void hidePlaylistViewObject () {
+        if (mIsPlaylistViewHidden) return;
 
-        isShowing = false;
-        isPeeking = false;
-        isHidden = true;
+        mIsPlaylistViewShowing = false;
+        mIsPlaylistViewPeeking = false;
+        mIsPlaylistViewHidden = true;
 
-        xAnimator = ValueAnimator.ofFloat (playlistView.getX (), dragView.getWidth ());
+        ValueAnimator xAnimator = ValueAnimator.ofFloat (mPlaylistView.getX (), mDragView.getWidth ());
         xAnimator.setDuration (getResources ().getInteger (android.R.integer.config_shortAnimTime));
         xAnimator.addUpdateListener (new ValueAnimator.AnimatorUpdateListener () {
             @Override
             public void onAnimationUpdate (ValueAnimator animation) {
-                playlistView.setX ((Float) animation.getAnimatedValue ());
+                mPlaylistView.setX ((Float) animation.getAnimatedValue ());
             }
         });
         xAnimator.addListener (new AnimatorListenerAdapter () {
@@ -434,13 +512,13 @@ public class MainFragment extends Fragment {
             }
         });
 
-        scaleAnimator = ValueAnimator.ofFloat (playlistView.getScaleX (), 1f);
+        ValueAnimator scaleAnimator = ValueAnimator.ofFloat (mPlaylistView.getScaleX (), 1f);
         scaleAnimator.setDuration (getResources ().getInteger (android.R.integer.config_shortAnimTime));
         scaleAnimator.addUpdateListener (new ValueAnimator.AnimatorUpdateListener () {
             @Override
             public void onAnimationUpdate (ValueAnimator animation) {
-                playlistView.setScaleX ((Float) animation.getAnimatedValue ());
-                playlistView.setScaleY ((Float) animation.getAnimatedValue ());
+                mPlaylistView.setScaleX ((Float) animation.getAnimatedValue ());
+                mPlaylistView.setScaleY ((Float) animation.getAnimatedValue ());
             }
         });
 

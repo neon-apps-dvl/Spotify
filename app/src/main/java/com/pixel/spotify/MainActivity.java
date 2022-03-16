@@ -25,7 +25,6 @@ import com.pixel.spotify.spotify.models.PlaylistModel;
 import com.pixel.spotify.spotify.models.Playlists;
 import com.pixel.spotify.spotify.models.TrackModel;
 import com.pixel.spotify.spotify.models.UserModel;
-import com.pixel.spotify.ui.DynamicTheme;
 import com.pixel.spotify.ui.MainBackdrop;
 import com.pixel.spotify.ui.UiState;
 import com.pixel.spotify.ui.color.ColorProfile;
@@ -44,6 +43,7 @@ import com.spotify.sdk.android.auth.AuthorizationResponse;
 
 import java.util.List;
 
+import neon.pixel.components.android.dynamictheme.DynamicTheme;
 import retrofit.client.Response;
 
 public class MainActivity extends AppCompatActivity implements OnUiStateChangedListener {

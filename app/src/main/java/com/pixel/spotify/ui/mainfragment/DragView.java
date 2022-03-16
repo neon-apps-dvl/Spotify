@@ -38,10 +38,13 @@ import com.pixel.spotify.ui.PlaylistSelector;
 import com.pixel.spotify.ui.SeekBar;
 import com.pixel.spotify.ui.TrackInfoView;
 import com.pixel.spotify.ui.TrackView;
+import com.pixel.spotify.ui.color.ColorProfile;
 
+import neon.pixel.components.android.dynamictheme.OnThemeChangedListener;
+import neon.pixel.components.android.theme.Theme;
 import neon.pixel.components.color.Hct;
 
-public class DragView extends CoordinatorLayout {
+public class DragView extends CoordinatorLayout implements OnThemeChangedListener {
     private static final String TAG = "DragView";
 
     @LayoutRes
@@ -49,52 +52,45 @@ public class DragView extends CoordinatorLayout {
 
     public MainFragment mMainFragment;
 
-    private CoordinatorLayout mediaControlsContainer;
-    private CoordinatorLayout trackViewContainer;
+    private CoordinatorLayout mMediaControlsContainer;
+    private CoordinatorLayout mTrackViewContainer;
 
-    private TrackView trackView;
-    private int selected;
-    private Playlists playlists;
+    private TrackView mTrackView;
+    private int mSelectedTrack;
+    private Playlists mPlaylists;
 
-    private InteractionListener interactionListener;
+    private InteractionListener mMainFragmentInteractionListener;
 
-    float trackViewAnchorX;
-    float trackViewAnchorY;
+    private float mTrackViewX;
+    private float mTrackViewY;
 
-    float trackInfoViewAnchorX;
-    float trackInfoViewAnchorY;
+    private float mTrackInfoViewX;
+    private float mTrackInfoViewY;
 
-    float playButtonAnchorX;
-    float playButtonAnchorY;
+    private float mPlayButtonX;
+    private float mPlayButtonY;
 
-    float seekBarAnchorX;
-    float seekBarAnchorY;
+    private float mSeekBarX;
+    private float mSeekBarY;
 
-    int quickAddViewAnchorX;
-    int quickAddViewAnchorY;
-
-    int dismissBound;
-    int peekBound;
-    int showBound;
-    int addBound;
+    private int mDismissBound;
+    private int mPeekBound;
+    private int mShowBound;
 
     private Object scaleLock = null;
 
-    private TrackModel trackModel;
+    private TrackModel mTrack;
 
-    private Palette trackColors;
+    private PlaylistSelector mPlaylistSelector;
+    private MaterialButton mSelectPlaylistButton;
 
-    private PlaylistSelector playlistSelector;
-    private MaterialButton selectPlaylistButton;
+    private AlbumButton mAlbumButton;
 
-//    private Chip albumButton;
-    private AlbumButton albumButton;
+    private MaterialButton mPlayButton;
+    private SeekBar mSeekBar;
+    private TrackInfoView mTrackInfoView;
 
-    private MaterialButton playButton;
-    private SeekBar seekBar;
-    private TrackInfoView trackInfoView;
-
-    private boolean isPlaying = false;
+    private boolean mIsPlaying = false;
 
     private int themeColor;
 
@@ -110,28 +106,29 @@ public class DragView extends CoordinatorLayout {
         setLayoutParams (new ViewGroup.LayoutParams (-1, -1));
         setBackgroundColor (context.getColor (android.R.color.transparent));
 
-        playlistSelector = new PlaylistSelector (context);
-        playlistSelector.setOnSelectionChangedListener ((selectedPlaylist, pinned) -> {
+        mPlaylistSelector = new PlaylistSelector (context);
+        mPlaylistSelector.setLayoutParams (new ViewGroup.LayoutParams (-1, -1));
+        mPlaylistSelector.setOnSelectionChangedListener ((selectedPlaylist, pinned) -> {
             if (pinned) {
                 Log.e (TAG, "pinned: " + selectedPlaylist.name);
 
-                selected = playlists.items.indexOf (selectedPlaylist);
-                selectPlaylistButton.setText ("Selected " + selectedPlaylist.name);
+                mSelectedTrack = mPlaylists.items.indexOf (selectedPlaylist);
+                mSelectPlaylistButton.setText ("Selected " + selectedPlaylist.name);
                 setColor (themeColor);
 
                 mMainFragment.setSelected (selectedPlaylist);
             }
             else {
-//                int i = playlists.indexOf (selectedPlaylist);
+//                int i = mPlaylists.indexOf (selectedPlaylist);
                 selectedPlaylist.trackCount += 1;
-//                playlists.set (i, selectedPlaylist);
-                playlistSelector.setPlaylists (selected, playlists);
+//                mPlaylists.set (i, selectedPlaylist);
+                mPlaylistSelector.setPlaylists (mSelectedTrack, mPlaylists);
 
-                mMainFragment.add (selectedPlaylist);
-                playlistSelector.close ();
+                mMainFragment.push (selectedPlaylist);
+                mPlaylistSelector.close ();
             }
         });
-        playlistSelector.setOnStateChangedListener (state -> {
+        mPlaylistSelector.setOnStateChangedListener (state -> {
             switch (state) {
                 case OPEN:
                     mMainFragment.requestHideUi ();
@@ -143,59 +140,55 @@ public class DragView extends CoordinatorLayout {
             }
         });
 
-        selectPlaylistButton = findViewById (R.id.select_playlist_button);
-        selectPlaylistButton.setText ("Add to playlist");
-        selectPlaylistButton.setOnClickListener (new OnClickListener () {
+        mSelectPlaylistButton = findViewById (R.id.select_playlist_button);
+        mSelectPlaylistButton.setText ("Add to playlist");
+        mSelectPlaylistButton.setOnClickListener (new OnClickListener () {
             @Override
             public void onClick (View v) {
-                playlistSelector.open ();
+                mPlaylistSelector.open ();
             }
         });
 
-        albumButton = new AlbumButton (context);
-        albumButton.setLayoutParams (new CoordinatorLayout.LayoutParams (0, (int) getPx (context, 32)));
-        albumButton.setOnClickListener (v -> {
-            mMainFragment.open (trackModel.album.uri);
+        mAlbumButton = new AlbumButton (context);
+        mAlbumButton.setLayoutParams (new CoordinatorLayout.LayoutParams (0, (int) getPx (context, 32)));
+        mAlbumButton.setOnClickListener (v -> {
+            mMainFragment.open (mTrack.album.uri);
         });
 
-        playButton = (MaterialButton) LayoutInflater.from (context).inflate (R.layout.play_button, null);//new MaterialButton (new ContextThemeWrapper (context, R.style.Widget_Material3_Button_OutlinedButton));
-        playButton.setIcon (getResources ().getDrawable (R.drawable.ic_play_24, context.getTheme ()));
-        playButton.setLayoutParams (new ViewGroup.LayoutParams ((int) getPx (context, 64), (int) getPx (context, 64)));
-        playButton.setOnClickListener (new OnClickListener () {
+        mPlayButton = (MaterialButton) LayoutInflater.from (context).inflate (R.layout.play_button, null);//new MaterialButton (new ContextThemeWrapper (context, R.style.Widget_Material3_Button_OutlinedButton));
+        mPlayButton.setIcon (getResources ().getDrawable (R.drawable.ic_play_24, context.getTheme ()));
+        mPlayButton.setLayoutParams (new ViewGroup.LayoutParams ((int) getPx (context, 64), (int) getPx (context, 64)));
+        mPlayButton.setOnClickListener (new OnClickListener () {
             @Override
             public void onClick (View v) {
-                if (!isPlaying) {
-                    isPlaying = true;
-                    playButton.setIcon (getResources ().getDrawable (R.drawable.ic_pause_24, context.getTheme ()));
-                } else if (isPlaying) {
-                    isPlaying = false;
-                    playButton.setIcon (getResources ().getDrawable (R.drawable.ic_play_24, context.getTheme ()));
+                if (!mIsPlaying) {
+                    mIsPlaying = true;
+                    mPlayButton.setIcon (getResources ().getDrawable (R.drawable.ic_pause_24, context.getTheme ()));
+                } else if (mIsPlaying) {
+                    mIsPlaying = false;
+                    mPlayButton.setIcon (getResources ().getDrawable (R.drawable.ic_play_24, context.getTheme ()));
                 }
             }
         });
 
-        seekBar = new SeekBar (context, null);
-        seekBar.setLayoutParams (new ViewGroup.LayoutParams ((int) getPx (context, 180), -2));
-        seekBar.setNoTheme ();
+        mSeekBar = new SeekBar (context, null);
+        mSeekBar.setLayoutParams (new ViewGroup.LayoutParams ((int) getPx (context, 180), -2));
+        mSeekBar.setNoTheme ();
 
-        trackInfoView = new TrackInfoView (context, null);
-        trackInfoView.setLayoutParams (new ViewGroup.LayoutParams ((int) getPx (context, 256), (int) getPx (context, 48)));
+        mTrackInfoView = new TrackInfoView (context, null);
+        mTrackInfoView.setLayoutParams (new ViewGroup.LayoutParams ((int) getPx (context, 256), (int) getPx (context, 48)));
 
-        mediaControlsContainer = findViewById (R.id.media_controls_container);
-        trackViewContainer = findViewById (R.id.track_view_container);
+        mMediaControlsContainer = findViewById (R.id.ui_container);
+        mTrackViewContainer = findViewById (R.id.track_view_container);
 
-//        ConstraintLayout albumButtonWrapper = findViewById (R.id.album_button_wrapper);
-//        ConstraintLayout.LayoutParams params = new ConstraintLayout.LayoutParams (-2, -2);
-//        params.leftToLeft = albumButtonWrapper.getId ();
-//        params.rightToRight = albumButtonWrapper.getId ();
-//        albumButton.setLayoutParams (params);
-//        albumButtonWrapper.addView (albumButton);
 
-        addView (albumButton);
+        addView (mAlbumButton);
 
-        mediaControlsContainer.addView (playButton);
-        mediaControlsContainer.addView (seekBar);
-        mediaControlsContainer.addView (trackInfoView);
+        mMediaControlsContainer.addView (mPlayButton);
+        mMediaControlsContainer.addView (mSeekBar);
+        mMediaControlsContainer.addView (mTrackInfoView);
+
+        addView (mPlaylistSelector);
     }
 
     @Override
@@ -204,42 +197,36 @@ public class DragView extends CoordinatorLayout {
 
         if (!changed) return;
 
-        dismissBound = getWidth () / 4;
-        peekBound = (int) (0.6 * getWidth ());
-        peekBound = (int) (0.55 * getWidth ());
-        showBound = (int) (0.75 * getWidth ());
-        addBound = (int) (0.75 * getWidth ());
+        mDismissBound = getWidth () / 4;
+        mPeekBound = (int) (0.6 * getWidth ());
+        mPeekBound = (int) (0.55 * getWidth ());
+        mShowBound = (int) (0.75 * getWidth ());
 
-        trackViewAnchorX = getWidth () / 2 - getPx (getContext (), 256) / 2;
-        trackViewAnchorY = getHeight () / 2 - getPx (getContext (), 256) / 2;
+        mTrackViewX = getWidth () / 2 - getPx (getContext (), 256) / 2;
+        mTrackViewY = getHeight () / 2 - getPx (getContext (), 256) / 2;
 
-        trackInfoViewAnchorX = trackViewAnchorX;
-        trackInfoViewAnchorY = trackViewAnchorY + getPx (getContext (), 280);
+        mTrackInfoViewX = mTrackViewX;
+        mTrackInfoViewY = mTrackViewY + getPx (getContext (), 280);
 
-        playButtonAnchorX = trackViewAnchorX;
-        playButtonAnchorY = getHeight () - seekBar.getHeight () - getPx (getContext (), 24);
+        mPlayButtonX = mTrackViewX;
+        mPlayButtonY = getHeight () - mSeekBar.getHeight () - getPx (getContext (), 24);
 
-        seekBarAnchorX = playButtonAnchorX + getPx (getContext (), 76);
-        seekBarAnchorY = getHeight () - seekBar.getHeight () - getPx (getContext (), 24);
+        mSeekBarX = mPlayButtonX + getPx (getContext (), 76);
+        mSeekBarY = getHeight () - mSeekBar.getHeight () - getPx (getContext (), 24);
 
-        quickAddViewAnchorX = getWidth ();
-        quickAddViewAnchorY = (int) (getHeight () / 2 - getPx (getContext (), 128));
+        mPlayButton.setX (mPlayButtonX);
+        mPlayButton.setY (mPlayButtonY);
 
-        playButton.setX (playButtonAnchorX);
-        playButton.setY (playButtonAnchorY);
+        mSeekBar.setX (mSeekBarX);
+        mSeekBar.setY (mSeekBarY);
 
-        seekBar.setX (seekBarAnchorX);
-        seekBar.setY (seekBarAnchorY);
+        mTrackInfoView.setX (mTrackInfoViewX);
+        mTrackInfoView.setY (mTrackInfoViewY);
 
-        trackInfoView.setX (trackInfoViewAnchorX);
-        trackInfoView.setY (trackInfoViewAnchorY);
+        mAlbumButton.setX (getWidth () / 2 - mAlbumButton.getWidth () / 2);
+        mAlbumButton.setY (mTrackInfoViewY + mTrackInfoView.getHeight () + getPx (getContext (), 12));
 
-        albumButton.setX (getWidth () / 2 - albumButton.getWidth () / 2);
-        albumButton.setY (trackInfoViewAnchorY + trackInfoView.getHeight () + getPx (getContext (), 12));
-
-        playlistSelector.setLayoutParams (new ViewGroup.LayoutParams (getWidth (), getHeight ()));
-        playlistSelector.setY (getHeight ());
-        addView (playlistSelector);
+        mPlaylistSelector.setY (getHeight ());
     }
 
     @Override
@@ -252,113 +239,113 @@ public class DragView extends CoordinatorLayout {
     }
 
     public void setPlaylists (int selected, Playlists playlists) {
-        this.selected = selected;
-        this.playlists = playlists;
+        this.mSelectedTrack = selected;
+        this.mPlaylists = playlists;
 
-        playlistSelector.setPlaylists (selected, playlists);
+        mPlaylistSelector.setPlaylists (selected, playlists);
 
 
-        selectPlaylistButton.setText ("Add to " + playlists.items.get (selected).name);
+        mSelectPlaylistButton.setText ("Add to " + playlists.items.get (selected).name);
     }
 
     private void setTrack (TrackModel trackModel) {
-        this.trackModel = trackModel;
+        this.mTrack = trackModel;
 
         if (trackModel.artists.size () == 0) return;
 
-        trackView.setTrack (trackModel);
-        trackInfoView.setParams (trackModel.name, trackModel.artists.get (0).name, trackModel.album.name);
-        albumButton.update (trackModel.album.name);
-//        albumButton.setText ("Album " + trackModel.album.name);
+        mTrackView.setTrack (trackModel);
+        mTrackInfoView.setParams (trackModel.name, trackModel.artists.get (0).name, trackModel.album.name);
+        mAlbumButton.update (trackModel.album.name);
+//        mAlbumButton.setText ("Album " + mTrack.album.name);
     }
 
     public void updateTrack (TrackModel trackModel) {
-        trackViewContainer.removeView (trackView);
+        mTrackViewContainer.removeView (mTrackView);
 
-        trackView = new TrackView (getContext (), this, trackViewAnchorX/*this.getWidth () / 2*/, trackViewAnchorY/*this.getHeight () / 2*/);
-        trackView.setAlpha (0f);
-        trackView.setInteractionListener (new TrackView.InteractionListener () {
+        mTrackView = new TrackView (getContext (), this, mTrackViewX/*this.getWidth () / 2*/, mTrackViewY/*this.getHeight () / 2*/);
+        mTrackView.setAlpha (0f);
+        mTrackView.setInteractionListener (new TrackView.InteractionListener () {
             boolean added = false;
 
             @Override
             public void onPositionChanged (TrackView v, float x, float y, float scaleX, float scaleY, float stretchX, float stretchY, boolean down) {
                 dispatchOnPositionChanged (v, x, y, scaleX, scaleY, stretchX, stretchY, down);
 
-                mediaControlsContainer.setAlpha (1 - (float) Math.sqrt (scaleX * scaleX + scaleY * scaleY));
+                mMediaControlsContainer.setAlpha (1 - (float) Math.sqrt (scaleX * scaleX + scaleY * scaleY));
 
-                if (x + trackView.getWidth () / 2 >= peekBound && x + trackView.getWidth () / 2 < showBound) {
-                    mMainFragment.peekPlaylist ();
-                    scaleTrackView (trackView, 1f);
-                } else if (x + trackView.getWidth () / 2 >= showBound) {
-                    mMainFragment.showPlaylist ();
-                    scaleTrackView (trackView, 0.5f);
+                if (x + mTrackView.getWidth () / 2 >= mPeekBound && x + mTrackView.getWidth () / 2 < mShowBound) {
+                    mMainFragment.peekPlaylistView ();
+                    scaleTrackView (mTrackView, 1f);
+                } else if (x + mTrackView.getWidth () / 2 >= mShowBound) {
+                    mMainFragment.showPlaylistView ();
+                    scaleTrackView (mTrackView, 0.5f);
 
                     if (!down) {
-                        trackView.setInteractionListener (null);
+                        mTrackView.setInteractionListener (null);
 
-                        mMainFragment.add ();
+                        mMainFragment.pushSelected ();
 
-                        trackView.animate ()
+                        mTrackView.animate ()
                                 .x (getWidth ())
                                 .setDuration (200)
                                 .start ();
 
-                        mediaControlsContainer.animate ()
+                        mMediaControlsContainer.animate ()
                                 .alpha (1f)
                                 .setDuration (200)
                                 .start ();
 
-                        mMainFragment.hidePlaylist ();
+                        mMainFragment.hidePlaylistView ();
                     }
-                } else if (x + trackView.getWidth () / 2 <= dismissBound) {
-                    scaleTrackView (trackView, 0.5f);
+                } else if (x + mTrackView.getWidth () / 2 <= mDismissBound) {
+                    scaleTrackView (mTrackView, 0.5f);
                     mMainFragment.glowRed ();
                 } else {
-                    mMainFragment.hidePlaylist ();
+                    mMainFragment.hidePlaylistView ();
                     scaleLock = null;
-                    scaleTrackView (trackView, 1);
+                    scaleTrackView (mTrackView, 1);
                     mMainFragment.glow ();
                 }
             }
         });
 
-        trackViewContainer.addView (trackView);
+        mTrackViewContainer.addView (mTrackView);
 
         Palette palette = Palette.from (trackModel.thumbnails.get (0)).generate ();
         Hct backgroundHct = Hct.fromInt (palette.getDominantSwatch ().getRgb ());
         backgroundHct.setTone (90);
 
-        trackView.getViewTreeObserver ().addOnGlobalLayoutListener (new ViewTreeObserver.OnGlobalLayoutListener () {
+        mTrackView.getViewTreeObserver ().addOnGlobalLayoutListener (new ViewTreeObserver.OnGlobalLayoutListener () {
             @Override
             public void onGlobalLayout () {
                 setTrack (trackModel);
 
-                trackView.animate ()
+                mTrackView.animate ()
                         .alpha (1f)
                         .setDuration (getResources ().getInteger (android.R.integer.config_longAnimTime))
                         .start ();
 
-                trackView.getViewTreeObserver ().removeOnGlobalLayoutListener (this);
+                mTrackView.getViewTreeObserver ().removeOnGlobalLayoutListener (this);
             }
         });
     }
 
     public void seekTo (float length) {
 
-        seekBar.seekTo (length);
+        mSeekBar.seekTo (length);
     }
 
     public void setTheme (int color) {
-        playlistSelector.setTheme (color);
+        mPlaylistSelector.setTheme (color);
 
-        seekBar.updateColor (color);
-        trackInfoView.updateColor (color);
+        mSeekBar.updateColor (color);
+        mTrackInfoView.updateColor (color);
 
         Hct hct = Hct.fromInt (color);
         hct.setTone (PRIMARY);
         int c = hct.toInt ();
 
-        selectPlaylistButton.setTextColor (c);
+        mSelectPlaylistButton.setTextColor (c);
 
         updateColor (color);
 
@@ -393,7 +380,7 @@ public class DragView extends CoordinatorLayout {
 
         int colorSecondary = hct.toInt ();
 
-        playButton.setIconTint (new ColorStateList (new int[][] {new int[] {}}, new int[] {colorPrimary}));
+        mPlayButton.setIconTint (new ColorStateList (new int[][] {new int[] {}}, new int[] {colorPrimary}));
 
         int[][] states = new int[][] {
                 new int[] { android.R.attr.state_pressed}, // enabled
@@ -431,40 +418,40 @@ public class DragView extends CoordinatorLayout {
 //</selector>
 
         ColorStateList ripple = new ColorStateList (states, colors);
-        selectPlaylistButton.setRippleColor (ripple);
-        selectPlaylistButton.setStrokeColor (new ColorStateList (buttonStates, buttonColors));
+        mSelectPlaylistButton.setRippleColor (ripple);
+        mSelectPlaylistButton.setStrokeColor (new ColorStateList (buttonStates, buttonColors));
 
-        albumButton.setColor (color);
+        mAlbumButton.setColor (color);
 
-        SpannableString s = new SpannableString (selectPlaylistButton.getText ());
+        SpannableString s = new SpannableString (mSelectPlaylistButton.getText ());
         s.setSpan (new ForegroundColorSpan (colorPrimary),
                 0,
-                selectPlaylistButton.getText ().length () - playlists.items.get (selected).name.length () - 1,
+                mSelectPlaylistButton.getText ().length () - mPlaylists.items.get (mSelectedTrack).name.length () - 1,
                 Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
 
         s.setSpan (new ForegroundColorSpan (colorSecondary),
-                selectPlaylistButton.getText ().length () - playlists.items.get (selected).name.length (),
-                selectPlaylistButton.getText ().length (),
+                mSelectPlaylistButton.getText ().length () - mPlaylists.items.get (mSelectedTrack).name.length (),
+                mSelectPlaylistButton.getText ().length (),
                 Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
 
-        selectPlaylistButton.setText (s);
+        mSelectPlaylistButton.setText (s);
 
-        String album = "Album " + trackModel.album.name;
+        String album = "Album " + mTrack.album.name;
 
         SpannableString s2 = new SpannableString (album);
         s2.setSpan (new ForegroundColorSpan (colorPrimary),
                 0,
-                album.length () - trackModel.album.name.length () - 1,
+                album.length () - mTrack.album.name.length () - 1,
                 Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
 
         s2.setSpan (new ForegroundColorSpan (colorSecondary),
-                album.length () - trackModel.album.name.length (),
+                album.length () - mTrack.album.name.length (),
                 album.length (),
                 Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
     }
 
     public void removeTrackView () {
-        trackViewContainer.removeView (trackView);
+        mTrackViewContainer.removeView (mTrackView);
     }
 
     private void flingOut (float velocityX, float velocityY) {
@@ -474,14 +461,14 @@ public class DragView extends CoordinatorLayout {
         int durationX = (int) Math.abs ((getWidth () / velocityX));
         int durationY = (int) Math.abs ((getWidth () / velocityY));
 
-        FlingAnimation flingX = new FlingAnimation (trackView, DynamicAnimation.TRANSLATION_X);
+        FlingAnimation flingX = new FlingAnimation (mTrackView, DynamicAnimation.TRANSLATION_X);
         flingX.setStartVelocity (velocityX)
 //                .setMinValue(0)
 //                .setMaxValue(maxScroll)
                 .setFriction (0.1f)
                 .start ();
 
-        FlingAnimation flingY = new FlingAnimation (trackView, DynamicAnimation.TRANSLATION_Y);
+        FlingAnimation flingY = new FlingAnimation (mTrackView, DynamicAnimation.TRANSLATION_Y);
         flingY.setStartVelocity (velocityY)
                 .setFriction (0.1f)
                 .start ();
@@ -525,13 +512,22 @@ public class DragView extends CoordinatorLayout {
         }
     }
 
-    public void setInteractionListener (InteractionListener interactionListener) {
-        this.interactionListener = interactionListener;
+    public void setMainFragmentInteractionListener (InteractionListener mainFragmentInteractionListener) {
+        mMainFragmentInteractionListener = mainFragmentInteractionListener;
     }
 
     public void dispatchOnPositionChanged (TrackView v, float x, float y, float scaleX, float scaleY, float stretchX, float stretchY, boolean down) {
-        if (interactionListener != null)
-            interactionListener.onPositionChanged (v, x + getWidth () / 2, y + getHeight () / 2, scaleX, scaleY, stretchX, stretchY, down);
+        if (mMainFragmentInteractionListener != null)
+            mMainFragmentInteractionListener.onPositionChanged (v, x + getWidth () / 2, y + getHeight () / 2, scaleX, scaleY, stretchX, stretchY, down);
+    }
+
+    @Override
+    public void onThemeChanged (int id, Theme theme) {
+        Log.e ("THEME", "theme changed");
+
+        int c0 = theme.getColor (ColorProfile.SECONDARY);
+
+        Log.e ("THEME", "primary: " + c0);
     }
 
     public interface InteractionListener {
