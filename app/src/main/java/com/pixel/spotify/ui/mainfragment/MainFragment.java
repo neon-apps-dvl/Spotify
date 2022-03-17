@@ -182,7 +182,7 @@ public class MainFragment extends Fragment {
         this.mTrack = track;
         mDragView.seekTo (1);
 
-        mDragView.updateTrack (track);
+        mDragView.newTrackView (track);
     }
 
     public void setPlaylists (int selected, Playlists playlists) {
@@ -271,6 +271,7 @@ public class MainFragment extends Fragment {
         setThemeColors (thumbnail);
 
         Theme theme = DynamicTheme.getTheme (UI_THEME);
+        theme.setColor (ColorProfile.MAIN, mBaseThemeColor);
         theme.setColor (ColorProfile.SURFACE, mColorSurface);
         theme.setColor (ColorProfile.PRIMARY, mColorPrimary);
         theme.setColor (ColorProfile.SECONDARY, mColorSecondary);
@@ -281,7 +282,7 @@ public class MainFragment extends Fragment {
         glow ();
 
         mDragView.seekTo (1);
-        mDragView.setTheme (mBaseThemeColor);
+        //mDragView.setColor (mBaseThemeColor);
     }
 
     private void setThemeColors (Bitmap thumbnail) {
@@ -305,15 +306,12 @@ public class MainFragment extends Fragment {
     private void setSurfaceViewOverlayColor (int color) {
         ValueAnimator surfaceViewOverlayColorAnimator = ValueAnimator.ofObject (new ArgbEvaluator (), mSurfaceViewOverlayColor, color);
         surfaceViewOverlayColorAnimator.setDuration (getResources ().getInteger (android.R.integer.config_shortAnimTime));
-        surfaceViewOverlayColorAnimator.addUpdateListener (new ValueAnimator.AnimatorUpdateListener () {
-            @Override
-            public void onAnimationUpdate (ValueAnimator animation) {
-                Color c = Color.valueOf ((Integer) surfaceViewOverlayColorAnimator.getAnimatedValue ());
+        surfaceViewOverlayColorAnimator.addUpdateListener (animation -> {
+            Color c = Color.valueOf ((Integer) surfaceViewOverlayColorAnimator.getAnimatedValue ());
 
-                mSurfaceViewOverlayColor = Color.argb (128, c.red (), c.green (), c.blue ());
+            mSurfaceViewOverlayColor = Color.argb (128, c.red (), c.green (), c.blue ());
 
-                mSurfaceViewOverlay.setBackgroundColor (mSurfaceViewOverlayColor);
-            }
+            mSurfaceViewOverlay.setBackgroundColor (mSurfaceViewOverlayColor);
         });
 
         surfaceViewOverlayColorAnimator.start ();

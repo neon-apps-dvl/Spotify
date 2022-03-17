@@ -11,7 +11,6 @@ import android.graphics.Color;
 import android.graphics.Outline;
 import android.graphics.drawable.Drawable;
 import android.graphics.drawable.GradientDrawable;
-import android.util.Log;
 import android.util.TypedValue;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -43,22 +42,22 @@ public class PlaylistSelector extends ConstraintLayout {
 
     private GradientDrawable shapeOverlay;
 
-    private View addPlaylistButton;
+    private View mAddPlaylistButton;
     private ImageView add;
     private TextView text;
 
-    private ConstraintLayout topBar;
-    private MaterialButton closeButton;
-    private ListView listView;
+    private ConstraintLayout mTopBar;
+    private MaterialButton mCloseButton;
+    private ListView mListView;
 
-    private TextView titleView1;
-    private TextView titleViewPlaylist;
-    private TextView infoView;
+    private TextView mTitleView;
+    private TextView mTitleViewPlaylist;
+    private TextView mInfoView;
 
-    private int selected;
-    private Playlists playlists;
-    private List <View> items;
-    private List <String> ids;
+    private int mSelectedPlaylist;
+    private Playlists mPlaylists;
+    private List <View> mItems;
+    private List <String> mIds;
 
     private int baseColor;
 
@@ -68,29 +67,29 @@ public class PlaylistSelector extends ConstraintLayout {
     public PlaylistSelector (@NonNull Context context) {
         super (context);
 
-        playlists = new Playlists ();
-        items = new ArrayList <> ();
-        ids = new ArrayList <> ();
+        mPlaylists = new Playlists ();
+        mItems = new ArrayList <> ();
+        mIds = new ArrayList <> ();
 
         LayoutInflater layoutInflater = LayoutInflater.from (context);
         layoutInflater.inflate (LAYOUT, this, true);
 
         shapeOverlay = (GradientDrawable) getResources ().getDrawable (R.drawable.playlist_selector_shape_overlay, getContext ().getTheme ()).mutate ();
 
-        addPlaylistButton = View.inflate (getContext (), R.layout.layout_add_playlist_button, null);
+        mAddPlaylistButton = View.inflate (getContext (), R.layout.layout_add_playlist_button, null);
 
-        addPlaylistButton.setBackgroundColor (getResources ().getColor (android.R.color.transparent, getContext ().getTheme ()));
-        addPlaylistButton.setClickable (true);
+        mAddPlaylistButton.setBackgroundColor (getResources ().getColor (android.R.color.transparent, getContext ().getTheme ()));
+        mAddPlaylistButton.setClickable (true);
 
         TypedValue ripple = new TypedValue ();
         context.getTheme ().resolveAttribute (android.R.attr.selectableItemBackground, ripple, true);
-        addPlaylistButton.setBackgroundResource (ripple.resourceId);
-        addPlaylistButton.setOnClickListener (v -> {
+        mAddPlaylistButton.setBackgroundResource (ripple.resourceId);
+        mAddPlaylistButton.setOnClickListener (v -> {
 
         });
 
-        add = addPlaylistButton.findViewById (R.id.add);
-        text = addPlaylistButton.findViewById (R.id.text);
+        add = mAddPlaylistButton.findViewById (R.id.add);
+        text = mAddPlaylistButton.findViewById (R.id.text);
 
         setBackground (shapeOverlay);
         setClipToOutline (true);
@@ -98,22 +97,22 @@ public class PlaylistSelector extends ConstraintLayout {
         setX (getPx (context, 12));
         setY (getPx (context, 12));
 
-        topBar = findViewById (R.id.top_bar);
+        mTopBar = findViewById (R.id.top_bar);
 
-        titleView1 = findViewById (R.id.title_view_1);
-        titleViewPlaylist = findViewById (R.id.title_view);
-        infoView = findViewById (R.id.info_view);
+        mTitleView = findViewById (R.id.title_view_1);
+        mTitleViewPlaylist = findViewById (R.id.title_view);
+        mInfoView = findViewById (R.id.info_view);
 
-        closeButton = findViewById (R.id.close_button);
-        closeButton.setOnClickListener (new OnClickListener () {
+        mCloseButton = findViewById (R.id.close_button);
+        mCloseButton.setOnClickListener (new OnClickListener () {
             @Override
             public void onClick (View v) {
                 close ();
             }
         });
 
-        listView = findViewById (R.id.playlist_list_view);
-        listView.addOnScrollListener (new RecyclerView.OnScrollListener () {
+        mListView = findViewById (R.id.playlist_list_view);
+        mListView.addOnScrollListener (new RecyclerView.OnScrollListener () {
             @Override
             public void onScrollStateChanged (@NonNull RecyclerView recyclerView, int newState) {
                 super.onScrollStateChanged (recyclerView, newState);
@@ -135,7 +134,7 @@ public class PlaylistSelector extends ConstraintLayout {
                 float rawElevation = position / 0.1f * MAX_ELEVATION;
                 float elevation = rawElevation <= MAX_ELEVATION ? rawElevation : MAX_ELEVATION;
 
-                topBar.setElevation (elevation);
+                mTopBar.setElevation (elevation);
             }
         });
     }
@@ -150,11 +149,11 @@ public class PlaylistSelector extends ConstraintLayout {
 
         setLayoutParams (new CoordinatorLayout.LayoutParams ((int) (parent.getWidth () - getPx (getContext (), 24)), (int) (parent.getHeight () - getPx (getContext (), 24))));
 
-        CoordinatorLayout.LayoutParams params = new CoordinatorLayout.LayoutParams ((int) (listView.getWidth () - getPx (getContext (), 12)), (int) getPx (getContext (), 88));
+        CoordinatorLayout.LayoutParams params = new CoordinatorLayout.LayoutParams ((int) (mListView.getWidth () - getPx (getContext (), 12)), (int) getPx (getContext (), 88));
         params.leftMargin = (int) getPx (getContext (), 12);
         params.rightMargin = (int) getPx (getContext (), 12);
 
-        addPlaylistButton.setOutlineProvider (new ViewOutlineProvider () {
+        mAddPlaylistButton.setOutlineProvider (new ViewOutlineProvider () {
             @Override
             public void getOutline (View view, Outline outline) {
                 outline.setRoundRect ((int) (view.getLeft () - getPx (getContext (), 12)),
@@ -164,54 +163,48 @@ public class PlaylistSelector extends ConstraintLayout {
                         24);
             }
         });
-        addPlaylistButton.setClipToOutline (true);
-        addPlaylistButton.setLayoutParams (params);
+        mAddPlaylistButton.setClipToOutline (true);
+        mAddPlaylistButton.setLayoutParams (params);
     }
 
     public void setPlaylists (int selected, Playlists playlists) {
-        Log.d ("selector", "setPlaylists: " + selected + " " + playlists.items.get (selected).name);
-
-        this.selected = selected;
-        //items.clear ();
-//        this.playlists = playlists;
+        this.mSelectedPlaylist = selected;
 
         for (PlaylistModel playlist : playlists.items) {
-            if (! this.playlists.contains (playlist)) {
+            if (! this.mPlaylists.contains (playlist)) {
                 View item = View.inflate (getContext (), R.layout.playlist_selector_list_item, null);
                 item.setLayoutParams (new ViewGroup.LayoutParams (-1, (int) getPx (getContext (), 88)));
                 item.setBackgroundColor (getResources ().getColor (android.R.color.transparent, getContext ().getTheme ()));
 
                 item.setOnClickListener (v -> {
-                    int i = items.indexOf (v);
+                    int i = mItems.indexOf (v);
                     PlaylistModel p = playlists.items.get (i);
 
                     if (mOnSelectionChangedListener != null) mOnSelectionChangedListener.onSelectionChanged (p, false);
                 });
 
                 item.setOnLongClickListener (v -> {
-                    int i = items.indexOf (v);
-                    PlaylistModel p = this.playlists.items.get (i);
-
-                    Log.d ("selector", "pinned " + p.name + "@" + i);
+                    int i = mItems.indexOf (v);
+                    PlaylistModel p = this.mPlaylists.items.get (i);
 
                     if (i != 0) {
-                        this.playlists.items.set (i, this.playlists.items.get (0));
-                        this.playlists.items.set (0, p);
+                        this.mPlaylists.items.set (i, this.mPlaylists.items.get (0));
+                        this.mPlaylists.items.set (0, p);
 
-                        items.set (i, items.get (0));
-                        items.set (0, v);
+                        mItems.set (i, mItems.get (0));
+                        mItems.set (0, v);
 
-                        listView.moveItem (i, 0);
+                        mListView.moveItem (i, 0);
 
-                        listView.scrollToPosition (0);
-                        listView.moveItem (1, i);
+                        mListView.scrollToPosition (0);
+                        mListView.moveItem (1, i);
 
-                        this.selected = 0;
+                        this.mSelectedPlaylist = 0;
 
                         if (mOnSelectionChangedListener != null) mOnSelectionChangedListener.onSelectionChanged (p, true);
                     }
 
-                    titleViewPlaylist.setText (p.name);
+                    mTitleViewPlaylist.setText (p.name);
 
                     setTextColor (baseColor);
 
@@ -230,60 +223,53 @@ public class PlaylistSelector extends ConstraintLayout {
                 else
                     count.setText (getResources ().getQuantityString (R.plurals.playlist_track_count, playlist.trackCount));
 
-                this.playlists.add (playlist);
-                items.add (item);
-                listView.addItem (items.size () - 1, item);
+                this.mPlaylists.add (playlist);
+                mItems.add (item);
+                mListView.addItem (mItems.size () - 1, item);
             }
         }
 
-        listView.addItem (addPlaylistButton);
+        mListView.addItem (mAddPlaylistButton);
 
 
         if (selected != 0) {
-            PlaylistModel p = this.playlists.items.get (this.selected);
-            View v = items.get (this.selected);
+            PlaylistModel p = this.mPlaylists.items.get (this.mSelectedPlaylist);
+            View v = mItems.get (this.mSelectedPlaylist);
 
-            this.playlists.items.set (this.selected, this.playlists.items.get (0));
-            this.playlists.items.set (0, p);
+            this.mPlaylists.items.set (this.mSelectedPlaylist, this.mPlaylists.items.get (0));
+            this.mPlaylists.items.set (0, p);
 
-            items.set (this.selected, items.get (0));
-            items.set (0, v);
+            mItems.set (this.mSelectedPlaylist, mItems.get (0));
+            mItems.set (0, v);
 
-            listView.moveItem (this.selected, 0);
+            mListView.moveItem (this.mSelectedPlaylist, 0);
 
-            listView.scrollToPosition (0);
-            listView.moveItem (1, this.selected);
+            mListView.scrollToPosition (0);
+            mListView.moveItem (1, this.mSelectedPlaylist);
 
-            this.selected = 0;
+            this.mSelectedPlaylist = 0;
         }
 
-        titleViewPlaylist.setText (this.playlists.items.get (this.selected).name);
+        mTitleViewPlaylist.setText (this.mPlaylists.items.get (this.mSelectedPlaylist).name);
 
-        setTheme (baseColor);
+        setColor (baseColor);
     }
 
-    public void setTheme (int color) {
+    public void setColor (int color) {
         baseColor = color;
 
-        /*
-        CONTAINER =
-         */
-
-
         Hct hct = Hct.fromInt (color);
-        hct.setTone (SURFACE); // 20
+        hct.setTone (SURFACE);
         int backgroundColor = hct.toInt ();
 
-        hct.setTone (PRIMARY); // 80
+        hct.setTone (PRIMARY);
         int colorPrimary = hct.toInt ();
 
-        hct.setTone (SECONDARY); // 50
+        hct.setTone (SECONDARY);
         int colorSecondary = hct.toInt ();
 
         shapeOverlay.setColor (backgroundColor);
         setBackground (shapeOverlay);
-
-        Log.e ("afhsdkjhfjk", "fksdjhfkjsdhfjsdhfjksdhfjksdhjkf");
 
         Drawable d = getContext ().getDrawable (R.drawable.rounded_rect_12).mutate ();
         d.setTint (Color.argb (128,
@@ -298,9 +284,9 @@ public class PlaylistSelector extends ConstraintLayout {
 
         text.setTextColor (colorPrimary);
 
-        topBar.setBackgroundColor (backgroundColor);
-        closeButton.setIconTint (new ColorStateList (new int[][]{{}}, new int[] {colorPrimary}));
-        int[][] states = new int[][] {
+        mTopBar.setBackgroundColor (backgroundColor);
+        mCloseButton.setIconTint (new ColorStateList (new int[][]{{}}, new int[] {colorPrimary}));
+        int[][] closeButtonRippleStates = new int[][] {
                 new int[] { android.R.attr.state_pressed}, // enabled
                 new int[] {android.R.attr.state_focused | android.R.attr.state_hovered}, // disabled
                 new int[] {android.R.attr.state_focused}, // disabled
@@ -308,21 +294,21 @@ public class PlaylistSelector extends ConstraintLayout {
                 new int[] {}
         };
 
-        android.graphics.Color p = android.graphics.Color.valueOf (colorPrimary);
+        android.graphics.Color holder = android.graphics.Color.valueOf (colorPrimary);
 
-        int [] colors = new int [] {
-                android.graphics.Color.argb (0.12f * 255, p.red (), p.green (), p.blue ()),
-                android.graphics.Color.argb (0.12f * 255, p.red (), p.green (), p.blue ()),
-                android.graphics.Color.argb (0.12f * 255, p.red (), p.green (), p.blue ()),
-                android.graphics.Color.argb (0.04f * 255, p.red (), p.green (), p.blue ()),
-                android.graphics.Color.argb (0.00f * 255, p.red (), p.green (), p.blue ()),
+        int [] closeButtonRippleColors = new int [] {
+                android.graphics.Color.argb (0.12f * 255, holder.red (), holder.green (), holder.blue ()),
+                android.graphics.Color.argb (0.12f * 255, holder.red (), holder.green (), holder.blue ()),
+                android.graphics.Color.argb (0.12f * 255, holder.red (), holder.green (), holder.blue ()),
+                android.graphics.Color.argb (0.04f * 255, holder.red (), holder.green (), holder.blue ()),
+                android.graphics.Color.argb (0.00f * 255, holder.red (), holder.green (), holder.blue ()),
         };
 
-        ColorStateList ripple = new ColorStateList (states, colors);
-        closeButton.setRippleColor (ripple);
+        ColorStateList closeButtonRipple = new ColorStateList (closeButtonRippleStates, closeButtonRippleColors);
+        mCloseButton.setRippleColor (closeButtonRipple);
         setTextColor (color);
 
-        for (View item : items) {
+        for (View item : mItems) {
             TextView title = item.findViewById (R.id.playlist_title);
             TextView count = item.findViewById (R.id.playlist_count);
 
@@ -341,20 +327,9 @@ public class PlaylistSelector extends ConstraintLayout {
 
         int colorSecondary = hct.toInt ();
 
-//        SpannableString s = new SpannableString (titleViewPlaylist.getText ());
-//        s.setSpan (new ForegroundColorSpan (colorPrimary),
-//                0,
-//                titleViewPlaylist.getText ().length () - playlists.items.get (selected).name.length () - 1,
-//                Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
-//
-//        s.setSpan (new ForegroundColorSpan (colorSecondary),
-//                titleViewPlaylist.getText ().length () - playlists.items.get (selected).name.length (),
-//                titleViewPlaylist.getText ().length (),
-//                Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
-
-        titleView1.setTextColor (colorPrimary);
-        titleViewPlaylist.setTextColor (colorSecondary);
-        infoView.setTextColor (colorSecondary);
+        mTitleView.setTextColor (colorPrimary);
+        mTitleViewPlaylist.setTextColor (colorSecondary);
+        mInfoView.setTextColor (colorSecondary);
     }
 
     public void open () {

@@ -122,13 +122,7 @@ public class MainActivity extends AppCompatActivity implements OnUiStateChangedL
                 .commit ();
 
         mMainBackdrop.setFrontView (fragContainer);
-
-        View v = new View (this);
-        v.setLayoutParams (new CoordinatorLayout.LayoutParams (-1, 500));
-        v.setBackgroundColor (android.graphics.Color.RED);
-
-        mMainBackdrop.setBackView (v);
-
+        
         if (checkSpotifyInstalled ()) {
             auth ();
         }

@@ -1,17 +1,16 @@
 package com.pixel.spotify.ui;
 
+import static com.pixel.spotify.ui.color.Color.DynamicTone.PRIMARY;
+import static com.pixel.spotify.ui.color.Color.DynamicTone.SECONDARY;
 import static neon.pixel.components.Components.getPx;
 
 import android.animation.ArgbEvaluator;
 import android.animation.ValueAnimator;
 import android.content.Context;
-import android.graphics.Bitmap;
 import android.graphics.Color;
 import android.text.Spannable;
 import android.text.SpannableString;
-import android.text.SpannableStringBuilder;
 import android.text.style.ForegroundColorSpan;
-import android.text.style.ImageSpan;
 import android.util.AttributeSet;
 import android.util.TypedValue;
 import android.view.LayoutInflater;
@@ -30,15 +29,13 @@ public class TrackInfoView extends ConstraintLayout {
     @LayoutRes
     private static final int LAYOUT = R.layout.track;
 
-    private TextView trackInfoView;
+    private TextView mTrackInfoView;
 
-    private String title;
-    private String artist;
-    private String album;
+    private String mTitle;
+    private String mArtist;
+    private String mAlbum;
 
-    private String info;
-
-    private int themeColor;
+    private int mThemeColor;
 
     public TrackInfoView (@NonNull Context context, @Nullable AttributeSet attrs) {
         super (context, attrs);
@@ -48,9 +45,9 @@ public class TrackInfoView extends ConstraintLayout {
 
         setBackground (null);
 
-        trackInfoView = findViewById (R.id.track_info_view);
+        mTrackInfoView = findViewById (R.id.track_info_view);
 
-        trackInfoView.setBackground (null);
+        mTrackInfoView.setBackground (null);
     }
 
     @Override
@@ -58,17 +55,17 @@ public class TrackInfoView extends ConstraintLayout {
         super.onLayout (changed, left, top, right, bottom);
     }
 
-    public void setParams (String title, String artist, String album) {
-        this.title = title;
-        this.artist = artist;
-        this.album = album;
+    public void setInfo (String title, String artist, String album) {
+        mTitle = title;
+        mArtist = artist;
+        mAlbum = album;
 
-        SpannableStringBuilder info = new SpannableStringBuilder (title + "&" + artist);
-        info.setSpan (new ImageSpan (getContext (), Bitmap.createBitmap ((int) getPx (getContext (), 12), 1, Bitmap.Config.ARGB_8888)), title.length (), title.length () + 1, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
-        trackInfoView.setText (info);
-        trackInfoView.setAutoSizeTextTypeUniformWithConfiguration ((int) getPx (getContext (), 12), (int) getPx (getContext (), 24), 1, TypedValue.COMPLEX_UNIT_PX);
+//        SpannableStringBuilder info = new SpannableStringBuilder (title + " " + artist);
+//        info.setSpan (new ImageSpan (getContext (), Bitmap.createBitmap ((int) getPx (getContext (), 12), 1, Bitmap.Config.ARGB_8888)), title.length (), title.length () + 1, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
+        mTrackInfoView.setText (title + " " + artist);
+        mTrackInfoView.setAutoSizeTextTypeUniformWithConfiguration ((int) getPx (getContext (), 12), (int) getPx (getContext (), 24), 1, TypedValue.COMPLEX_UNIT_PX);
 
-        setColor (themeColor);
+        setColor (mThemeColor);
     }
 
     ValueAnimator rAnimator;
@@ -78,37 +75,37 @@ public class TrackInfoView extends ConstraintLayout {
     ValueAnimator animator;
 
     public void setColor (int color) {
-        themeColor = color;
+        mThemeColor = color;
 
-        Hct hct = Hct.fromInt (color);
-        hct.setTone (70);
+        Hct hct = Hct.fromInt (mThemeColor);
+        hct.setTone (PRIMARY);
+        int colorPrimary = hct.toInt ();
 
-        int titleColor = hct.toInt ();
+        hct = Hct.fromInt (mThemeColor);
+        hct.setTone (SECONDARY);
+        int colorSecondary = hct.toInt ();
 
-        hct.setTone (50);
-        int artistColor = hct.toInt ();
+        if (mTitle != null) {
+            SpannableString s = new SpannableString (mTrackInfoView.getText ());
+            s.setSpan (new ForegroundColorSpan (colorPrimary), 0, mTitle.length (), Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
+            s.setSpan (new ForegroundColorSpan (colorSecondary), mTitle.length () + 1, s.toString ().length (), Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
 
-        if (title != null) {
-            SpannableString info = new SpannableString (trackInfoView.getText ());
-            info.setSpan (new ForegroundColorSpan (titleColor), 0, title.length (), Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
-            info.setSpan (new ForegroundColorSpan (artistColor), title.length () + 1, info.toString ().length (), Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
-
-            trackInfoView.setText (info);
-            trackInfoView.setSelected (true);
+            mTrackInfoView.setText (s);
+            mTrackInfoView.setSelected (true);
         }
     }
 
     public void updateColor (int color) {
         if (animator != null && animator.isRunning ()) return;
 
-        animator = ValueAnimator.ofObject (new ArgbEvaluator (), themeColor, color);
+        animator = ValueAnimator.ofObject (new ArgbEvaluator (), mThemeColor, color);
         animator.setDuration (getResources ().getInteger (android.R.integer.config_shortAnimTime));
         animator.addUpdateListener (new ValueAnimator.AnimatorUpdateListener () {
             @Override
             public void onAnimationUpdate (ValueAnimator animation) {
-                themeColor = (int) animation.getAnimatedValue ();
+                mThemeColor = (int) animation.getAnimatedValue ();
 
-                setColor (themeColor);
+                setColor (mThemeColor);
             }
         });
 
@@ -118,9 +115,9 @@ public class TrackInfoView extends ConstraintLayout {
     public void updateColor2 (int color1) {
         if (rAnimator != null && rAnimator.isRunning ()) return;
 
-        int r = Color.red (themeColor);
-        int g = Color.green (themeColor);
-        int b = Color.blue (themeColor);
+        int r = Color.red (mThemeColor);
+        int g = Color.green (mThemeColor);
+        int b = Color.blue (mThemeColor);
 
         int targetR = Color.red (color1);
         int targetG = Color.green (color1);
@@ -141,13 +138,13 @@ public class TrackInfoView extends ConstraintLayout {
                 int g = rgb[1];
                 int b = rgb[2];
 
-                themeColor = Color.argb (255, r, g, b);
+                mThemeColor = Color.argb (255, r, g, b);
 
 //                Log.d ("debug", String.format ("r: %d g: %d b: %d  |  r: %d g: %d b: %d",
-//                        Color.red (themeColor), Color.green (themeColor), Color.blue (themeColor),
+//                        Color.red (mThemeColor), Color.green (mThemeColor), Color.blue (mThemeColor),
 //                        targetR, targetG, targetB));
 
-                setColor (themeColor);
+                setColor (mThemeColor);
             }
         });
 
@@ -164,15 +161,15 @@ public class TrackInfoView extends ConstraintLayout {
                 int g = temp;
                 int b = rgb[2];
 
-                themeColor = Color.argb (255, r, g, b);
+                mThemeColor = Color.argb (255, r, g, b);
 
 //                Log.d ("debug", "g: " + temp + " targetG: " + targetG);
 
 //                Log.d ("debug", String.format ("r: %d g: %d b: %d  |  r: %d g: %d b: %d",
-//                        Color.red (themeColor), Color.green (themeColor), Color.blue (themeColor),
+//                        Color.red (mThemeColor), Color.green (mThemeColor), Color.blue (mThemeColor),
 //                        targetR, targetG, targetB));
 
-                setColor (themeColor);
+                setColor (mThemeColor);
             }
         });
 
@@ -189,14 +186,14 @@ public class TrackInfoView extends ConstraintLayout {
                 int g = rgb[1];
                 int b = temp;
 
-                themeColor = Color.argb (255, r, g, b);
+                mThemeColor = Color.argb (255, r, g, b);
 //                Log.d ("debug", "b: " + temp + " targetB: " + targetB);
 
 //                Log.d ("debug", String.format ("r: %d g: %d b: %d  |  r: %d g: %d b: %d",
-//                        Color.red (themeColor), Color.green (themeColor), Color.blue (themeColor),
+//                        Color.red (mThemeColor), Color.green (mThemeColor), Color.blue (mThemeColor),
 //                        targetR, targetG, targetB));
 
-                setColor (themeColor);
+                setColor (mThemeColor);
             }
         });
 

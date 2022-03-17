@@ -12,7 +12,6 @@ import android.graphics.drawable.GradientDrawable;
 import android.text.SpannableString;
 import android.text.Spanned;
 import android.text.style.ForegroundColorSpan;
-import android.util.Log;
 import android.view.LayoutInflater;
 import android.widget.TextView;
 
@@ -55,7 +54,7 @@ public class AlbumButton extends ConstraintLayout {
         mText = mTextStart + "%";
     }
 
-    public void update (String album) {
+    public void setAlbum (String album) {
         mText = mTextStart + album;
 
         Paint p = mTextView.getPaint ();
@@ -64,8 +63,6 @@ public class AlbumButton extends ConstraintLayout {
 
         int rawWidth = b.width () + 2 * textPadding;
         int w = rawWidth <= maxWidth ? rawWidth : maxWidth;
-
-        Log.d (TAG, "updating: " + album + " newWidth: " + w);
 
         updateText (mText);
         updatePos (w);
@@ -112,8 +109,6 @@ public class AlbumButton extends ConstraintLayout {
         b.setStroke ((int) getPx (getContext (), 1), colorPrimary);
 
         setBackground (b);
-
-        Log.d ("text", "applying color to: " + mText);
 
         SpannableString s = new SpannableString (mText);
         s.setSpan (new ForegroundColorSpan (colorPrimary),

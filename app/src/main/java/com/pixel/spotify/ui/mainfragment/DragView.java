@@ -2,6 +2,7 @@ package com.pixel.spotify.ui.mainfragment;
 
 import static com.pixel.spotify.ui.color.Color.DynamicTone.PRIMARY;
 import static com.pixel.spotify.ui.color.Color.DynamicTone.SECONDARY;
+import static com.pixel.spotify.ui.color.Color.DynamicTone.SURFACE;
 import static neon.pixel.components.Components.getPx;
 
 import android.animation.Animator;
@@ -12,10 +13,11 @@ import android.annotation.SuppressLint;
 import android.content.Context;
 import android.content.res.ColorStateList;
 import android.graphics.Color;
+import android.os.Handler;
+import android.os.Looper;
 import android.text.SpannableString;
 import android.text.Spanned;
 import android.text.style.ForegroundColorSpan;
-import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.MotionEvent;
 import android.view.View;
@@ -27,7 +29,6 @@ import androidx.annotation.NonNull;
 import androidx.coordinatorlayout.widget.CoordinatorLayout;
 import androidx.dynamicanimation.animation.DynamicAnimation;
 import androidx.dynamicanimation.animation.FlingAnimation;
-import androidx.palette.graphics.Palette;
 
 import com.google.android.material.button.MaterialButton;
 import com.pixel.spotify.R;
@@ -56,8 +57,18 @@ public class DragView extends CoordinatorLayout implements OnThemeChangedListene
     private CoordinatorLayout mTrackViewContainer;
 
     private TrackView mTrackView;
-    private int mSelectedTrack;
+
+    private TrackModel mTrack;
     private Playlists mPlaylists;
+    private int mSelectedPlaylist;
+
+    private MaterialButton mSelectPlaylistButton;
+    private PlaylistSelector mPlaylistSelector;
+
+    private AlbumButton mAlbumButton;
+    private TrackInfoView mTrackInfoView;
+    private MaterialButton mPlayButton;
+    private SeekBar mSeekBar;
 
     private InteractionListener mMainFragmentInteractionListener;
 
@@ -79,20 +90,9 @@ public class DragView extends CoordinatorLayout implements OnThemeChangedListene
 
     private Object scaleLock = null;
 
-    private TrackModel mTrack;
-
-    private PlaylistSelector mPlaylistSelector;
-    private MaterialButton mSelectPlaylistButton;
-
-    private AlbumButton mAlbumButton;
-
-    private MaterialButton mPlayButton;
-    private SeekBar mSeekBar;
-    private TrackInfoView mTrackInfoView;
-
     private boolean mIsPlaying = false;
 
-    private int themeColor;
+    private int mThemeColor;
 
     private boolean mEnabled = true;
 
@@ -110,19 +110,14 @@ public class DragView extends CoordinatorLayout implements OnThemeChangedListene
         mPlaylistSelector.setLayoutParams (new ViewGroup.LayoutParams (-1, -1));
         mPlaylistSelector.setOnSelectionChangedListener ((selectedPlaylist, pinned) -> {
             if (pinned) {
-                Log.e (TAG, "pinned: " + selectedPlaylist.name);
-
-                mSelectedTrack = mPlaylists.items.indexOf (selectedPlaylist);
+                mSelectedPlaylist = mPlaylists.items.indexOf (selectedPlaylist);
                 mSelectPlaylistButton.setText ("Selected " + selectedPlaylist.name);
-                setColor (themeColor);
+                setColor (mThemeColor);
 
                 mMainFragment.setSelected (selectedPlaylist);
-            }
-            else {
-//                int i = mPlaylists.indexOf (selectedPlaylist);
+            } else {
                 selectedPlaylist.trackCount += 1;
-//                mPlaylists.set (i, selectedPlaylist);
-                mPlaylistSelector.setPlaylists (mSelectedTrack, mPlaylists);
+                mPlaylistSelector.setPlaylists (mSelectedPlaylist, mPlaylists);
 
                 mMainFragment.push (selectedPlaylist);
                 mPlaylistSelector.close ();
@@ -181,12 +176,10 @@ public class DragView extends CoordinatorLayout implements OnThemeChangedListene
         mMediaControlsContainer = findViewById (R.id.ui_container);
         mTrackViewContainer = findViewById (R.id.track_view_container);
 
-
-        addView (mAlbumButton);
-
         mMediaControlsContainer.addView (mPlayButton);
         mMediaControlsContainer.addView (mSeekBar);
         mMediaControlsContainer.addView (mTrackInfoView);
+        mMediaControlsContainer.addView (mAlbumButton);
 
         addView (mPlaylistSelector);
     }
@@ -231,7 +224,7 @@ public class DragView extends CoordinatorLayout implements OnThemeChangedListene
 
     @Override
     public boolean onInterceptTouchEvent (MotionEvent ev) {
-        return ! mEnabled;
+        return !mEnabled;
     }
 
     public void setEnabled (boolean enabled) {
@@ -239,86 +232,75 @@ public class DragView extends CoordinatorLayout implements OnThemeChangedListene
     }
 
     public void setPlaylists (int selected, Playlists playlists) {
-        this.mSelectedTrack = selected;
-        this.mPlaylists = playlists;
+        mSelectedPlaylist = selected;
+        mPlaylists = playlists;
 
         mPlaylistSelector.setPlaylists (selected, playlists);
-
 
         mSelectPlaylistButton.setText ("Add to " + playlists.items.get (selected).name);
     }
 
-    private void setTrack (TrackModel trackModel) {
-        this.mTrack = trackModel;
+    private void setTrackInfo (TrackModel track) {
+        mTrack = track;
 
-        if (trackModel.artists.size () == 0) return;
+        if (track.artists.size () == 0) return;
 
-        mTrackView.setTrack (trackModel);
-        mTrackInfoView.setParams (trackModel.name, trackModel.artists.get (0).name, trackModel.album.name);
-        mAlbumButton.update (trackModel.album.name);
-//        mAlbumButton.setText ("Album " + mTrack.album.name);
+        mTrackView.setTrack (track);
+        mTrackInfoView.setInfo (track.name, track.artists.get (0).name, track.album.name);
+        mAlbumButton.setAlbum (track.album.name);
     }
 
-    public void updateTrack (TrackModel trackModel) {
+    public void newTrackView (TrackModel trackModel) {
         mTrackViewContainer.removeView (mTrackView);
 
         mTrackView = new TrackView (getContext (), this, mTrackViewX/*this.getWidth () / 2*/, mTrackViewY/*this.getHeight () / 2*/);
         mTrackView.setAlpha (0f);
-        mTrackView.setInteractionListener (new TrackView.InteractionListener () {
-            boolean added = false;
+        mTrackView.setInteractionListener ((v, x, y, scaleX, scaleY, stretchX, stretchY, down) -> {
+            dispatchOnPositionChanged (v, x, y, scaleX, scaleY, stretchX, stretchY, down);
 
-            @Override
-            public void onPositionChanged (TrackView v, float x, float y, float scaleX, float scaleY, float stretchX, float stretchY, boolean down) {
-                dispatchOnPositionChanged (v, x, y, scaleX, scaleY, stretchX, stretchY, down);
+            mMediaControlsContainer.setAlpha (1 - (float) Math.sqrt (scaleX * scaleX + scaleY * scaleY));
 
-                mMediaControlsContainer.setAlpha (1 - (float) Math.sqrt (scaleX * scaleX + scaleY * scaleY));
+            if (x + mTrackView.getWidth () / 2 >= mPeekBound && x + mTrackView.getWidth () / 2 < mShowBound) {
+                mMainFragment.peekPlaylistView ();
+                scaleTrackView (mTrackView, 1f);
+            } else if (x + mTrackView.getWidth () / 2 >= mShowBound) {
+                mMainFragment.showPlaylistView ();
+                scaleTrackView (mTrackView, 0.5f);
 
-                if (x + mTrackView.getWidth () / 2 >= mPeekBound && x + mTrackView.getWidth () / 2 < mShowBound) {
-                    mMainFragment.peekPlaylistView ();
-                    scaleTrackView (mTrackView, 1f);
-                } else if (x + mTrackView.getWidth () / 2 >= mShowBound) {
-                    mMainFragment.showPlaylistView ();
-                    scaleTrackView (mTrackView, 0.5f);
+                if (!down) {
+                    mTrackView.setInteractionListener (null);
 
-                    if (!down) {
-                        mTrackView.setInteractionListener (null);
+                    mMainFragment.pushSelected ();
 
-                        mMainFragment.pushSelected ();
+                    mTrackView.animate ()
+                            .x (getWidth ())
+                            .setDuration (200)
+                            .start ();
 
-                        mTrackView.animate ()
-                                .x (getWidth ())
-                                .setDuration (200)
-                                .start ();
+                    mMediaControlsContainer.animate ()
+                            .alpha (1f)
+                            .setDuration (200)
+                            .start ();
 
-                        mMediaControlsContainer.animate ()
-                                .alpha (1f)
-                                .setDuration (200)
-                                .start ();
-
-                        mMainFragment.hidePlaylistView ();
-                    }
-                } else if (x + mTrackView.getWidth () / 2 <= mDismissBound) {
-                    scaleTrackView (mTrackView, 0.5f);
-                    mMainFragment.glowRed ();
-                } else {
                     mMainFragment.hidePlaylistView ();
-                    scaleLock = null;
-                    scaleTrackView (mTrackView, 1);
-                    mMainFragment.glow ();
                 }
+            } else if (x + mTrackView.getWidth () / 2 <= mDismissBound) {
+                scaleTrackView (mTrackView, 0.5f);
+                mMainFragment.glowRed ();
+            } else {
+                mMainFragment.hidePlaylistView ();
+                scaleLock = null;
+                scaleTrackView (mTrackView, 1);
+                mMainFragment.glow ();
             }
         });
 
         mTrackViewContainer.addView (mTrackView);
 
-        Palette palette = Palette.from (trackModel.thumbnails.get (0)).generate ();
-        Hct backgroundHct = Hct.fromInt (palette.getDominantSwatch ().getRgb ());
-        backgroundHct.setTone (90);
-
         mTrackView.getViewTreeObserver ().addOnGlobalLayoutListener (new ViewTreeObserver.OnGlobalLayoutListener () {
             @Override
             public void onGlobalLayout () {
-                setTrack (trackModel);
+                setTrackInfo (trackModel);
 
                 mTrackView.animate ()
                         .alpha (1f)
@@ -331,12 +313,172 @@ public class DragView extends CoordinatorLayout implements OnThemeChangedListene
     }
 
     public void seekTo (float length) {
-
         mSeekBar.seekTo (length);
     }
 
+    private void setUiColor (int color) {
+        ValueAnimator uiColorAnimator = ValueAnimator.ofObject (new ArgbEvaluator (), mThemeColor, color);
+        uiColorAnimator.setDuration (getResources ().getInteger (android.R.integer.config_shortAnimTime));
+        uiColorAnimator.addUpdateListener (animation -> {
+            int themeColor = (int) animation.getAnimatedValue ();
+
+            Hct hct = Hct.fromInt (themeColor);
+            hct.setTone (PRIMARY);
+            int colorPrimary = hct.toInt ();
+
+            hct = Hct.fromInt (themeColor);
+            hct.setTone (SECONDARY);
+            int colorSecondary = hct.toInt ();
+
+            setSelectPlaylistButtonColor (themeColor);
+            mTrackInfoView.setColor (themeColor);
+            mAlbumButton.setColor (themeColor);
+            mPlayButton.setIconTint (new ColorStateList (new int[][] {new int[] {}}, new int[] {colorPrimary}));
+            mSeekBar.setColor (themeColor);
+            mPlaylistSelector.setColor (themeColor);
+        });
+
+        uiColorAnimator.start ();
+    }
+
+    private void setSelectPlaylistButtonColor (int color) {
+        Hct hct = Hct.fromInt (color);
+        hct.setTone (PRIMARY);
+        int colorPrimary = hct.toInt ();
+
+        hct = Hct.fromInt (color);
+        hct.setTone (SECONDARY);
+        int colorSecondary = hct.toInt ();
+
+        hct = Hct.fromInt (color);
+        hct.setTone (SURFACE);
+        int colorSurface = hct.toInt ();
+
+        int[][] selectPlaylistButtonRippleStates = new int[][] {
+                new int[] {android.R.attr.state_pressed}, // enabled
+                new int[] {android.R.attr.state_focused | android.R.attr.state_hovered}, // disabled
+                new int[] {android.R.attr.state_focused}, // disabled
+                new int[] {android.R.attr.state_hovered}, // unchecked
+                new int[] {}
+        };
+
+        Color holder = Color.valueOf (colorPrimary);
+
+        int[] selectPlaylistButtonRippleColors = new int[] {
+                Color.argb (0.12f * 255, holder.red (), holder.green (), holder.blue ()),
+                Color.argb (0.12f * 255, holder.red (), holder.green (), holder.blue ()),
+                Color.argb (0.12f * 255, holder.red (), holder.green (), holder.blue ()),
+                Color.argb (0.04f * 255, holder.red (), holder.green (), holder.blue ()),
+                Color.argb (0.00f * 255, holder.red (), holder.green (), holder.blue ()),
+        };
+
+        int[][] selectPlaylistButtonContainerStates = new int[][] {
+                new int[] {android.R.attr.checked}, // enabled
+                new int[] {-android.R.attr.checked}, // unchecked
+        };
+
+        holder = Color.valueOf (colorPrimary);
+
+        int[] selectPlaylistButtonContainerColors = new int[] {
+                Color.argb (255, holder.red (), holder.green (), holder.blue ()),
+                Color.argb (0.12f * 255, holder.red (), holder.green (), holder.blue ()),
+        };
+
+        ColorStateList selectPlaylistButtonRipple = new ColorStateList (selectPlaylistButtonRippleStates, selectPlaylistButtonRippleColors);
+        mSelectPlaylistButton.setRippleColor (selectPlaylistButtonRipple);
+        mSelectPlaylistButton.setStrokeColor (new ColorStateList (selectPlaylistButtonContainerStates, selectPlaylistButtonContainerColors));
+
+        SpannableString s = new SpannableString (mSelectPlaylistButton.getText ());
+        s.setSpan (new ForegroundColorSpan (colorPrimary),
+                0,
+                mSelectPlaylistButton.getText ().length () - mPlaylists.items.get (mSelectedPlaylist).name.length () - 1,
+                Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+
+        s.setSpan (new ForegroundColorSpan (colorSecondary),
+                mSelectPlaylistButton.getText ().length () - mPlaylists.items.get (mSelectedPlaylist).name.length (),
+                mSelectPlaylistButton.getText ().length (),
+                Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+
+        mSelectPlaylistButton.setText (s);
+    }
+
+    private void setColor (int color) {
+        Hct hct = Hct.fromInt (color);
+        hct.setTone (PRIMARY);
+
+        int colorPrimary = hct.toInt ();
+
+        hct.setTone (SECONDARY);
+
+        int colorSecondary = hct.toInt ();
+
+        mPlayButton.setIconTint (new ColorStateList (new int[][] {new int[] {}}, new int[] {colorPrimary}));
+
+        int[][] states = new int[][] {
+                new int[] {android.R.attr.state_pressed}, // enabled
+                new int[] {android.R.attr.state_focused | android.R.attr.state_hovered}, // disabled
+                new int[] {android.R.attr.state_focused}, // disabled
+                new int[] {android.R.attr.state_hovered}, // unchecked
+                new int[] {}
+        };
+
+        Color p = Color.valueOf (colorPrimary);
+
+        int[] colors = new int[] {
+                Color.argb (0.12f * 255, p.red (), p.green (), p.blue ()),
+                Color.argb (0.12f * 255, p.red (), p.green (), p.blue ()),
+                Color.argb (0.12f * 255, p.red (), p.green (), p.blue ()),
+                Color.argb (0.04f * 255, p.red (), p.green (), p.blue ()),
+                Color.argb (0.00f * 255, p.red (), p.green (), p.blue ()),
+        };
+
+        int[][] buttonStates = new int[][] {
+                new int[] {android.R.attr.checked}, // enabled
+                new int[] {-android.R.attr.checked}, // unchecked
+        };
+
+        p = Color.valueOf (colorPrimary);
+
+        int[] buttonColors = new int[] {
+                Color.argb (255, p.red (), p.green (), p.blue ()),
+                Color.argb (0.12f * 255, p.red (), p.green (), p.blue ()),
+        };
+
+        ColorStateList ripple = new ColorStateList (states, colors);
+        mSelectPlaylistButton.setRippleColor (ripple);
+        mSelectPlaylistButton.setStrokeColor (new ColorStateList (buttonStates, buttonColors));
+
+        mAlbumButton.setColor (color);
+
+        SpannableString s = new SpannableString (mSelectPlaylistButton.getText ());
+        s.setSpan (new ForegroundColorSpan (colorPrimary),
+                0,
+                mSelectPlaylistButton.getText ().length () - mPlaylists.items.get (mSelectedPlaylist).name.length () - 1,
+                Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+
+        s.setSpan (new ForegroundColorSpan (colorSecondary),
+                mSelectPlaylistButton.getText ().length () - mPlaylists.items.get (mSelectedPlaylist).name.length (),
+                mSelectPlaylistButton.getText ().length (),
+                Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+
+        mSelectPlaylistButton.setText (s);
+
+        String album = "Album " + mTrack.album.name;
+
+        SpannableString s2 = new SpannableString (album);
+        s2.setSpan (new ForegroundColorSpan (colorPrimary),
+                0,
+                album.length () - mTrack.album.name.length () - 1,
+                Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+
+        s2.setSpan (new ForegroundColorSpan (colorSecondary),
+                album.length () - mTrack.album.name.length (),
+                album.length (),
+                Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+    }
+
     public void setTheme (int color) {
-        mPlaylistSelector.setTheme (color);
+        mPlaylistSelector.setColor (color);
 
         mSeekBar.updateColor (color);
         mTrackInfoView.updateColor (color);
@@ -356,98 +498,18 @@ public class DragView extends CoordinatorLayout implements OnThemeChangedListene
     private void updateColor (int color) {
         if (animator != null && animator.isRunning ()) return;
 
-        animator = ValueAnimator.ofObject (new ArgbEvaluator (), themeColor, color);
+        animator = ValueAnimator.ofObject (new ArgbEvaluator (), mThemeColor, color);
         animator.setDuration (getResources ().getInteger (android.R.integer.config_shortAnimTime));
         animator.addUpdateListener (new ValueAnimator.AnimatorUpdateListener () {
             @Override
             public void onAnimationUpdate (ValueAnimator animation) {
-                themeColor = (int) animation.getAnimatedValue ();
+                mThemeColor = (int) animation.getAnimatedValue ();
 
-                setColor (themeColor);
+                setColor (mThemeColor);
             }
         });
 
         animator.start ();
-    }
-
-    private void setColor (int color) {
-        Hct hct = Hct.fromInt (color);
-        hct.setTone (PRIMARY);
-
-        int colorPrimary = hct.toInt ();
-
-        hct.setTone (SECONDARY);
-
-        int colorSecondary = hct.toInt ();
-
-        mPlayButton.setIconTint (new ColorStateList (new int[][] {new int[] {}}, new int[] {colorPrimary}));
-
-        int[][] states = new int[][] {
-                new int[] { android.R.attr.state_pressed}, // enabled
-                new int[] {android.R.attr.state_focused | android.R.attr.state_hovered}, // disabled
-                new int[] {android.R.attr.state_focused}, // disabled
-                new int[] {android.R.attr.state_hovered}, // unchecked
-                new int[] {}
-        };
-
-        Color p = Color.valueOf (colorPrimary);
-
-        int [] colors = new int [] {
-                Color.argb (0.12f * 255, p.red (), p.green (), p.blue ()),
-                Color.argb (0.12f * 255, p.red (), p.green (), p.blue ()),
-                Color.argb (0.12f * 255, p.red (), p.green (), p.blue ()),
-                Color.argb (0.04f * 255, p.red (), p.green (), p.blue ()),
-                Color.argb (0.00f * 255, p.red (), p.green (), p.blue ()),
-        };
-
-        int[][] buttonStates = new int[][] {
-                new int[] { android.R.attr.checked}, // enabled
-                new int[] {-android.R.attr.checked}, // unchecked
-        };
-
-        p = Color.valueOf (colorPrimary);
-
-        int [] buttonColors = new int [] {
-                Color.argb (255, p.red (), p.green (), p.blue ()),
-                Color.argb (0.12f * 255, p.red (), p.green (), p.blue ()),
-        };
-
-        //        <selector xmlns:android="http://schemas.android.com/apk/res/android">
-//  <item android:color="?attr/colorPrimary" android:state_checked="true"/>
-//  <item android:alpha="0.12" android:color="?attr/colorOnSurface" android:state_checked="false"/>
-//</selector>
-
-        ColorStateList ripple = new ColorStateList (states, colors);
-        mSelectPlaylistButton.setRippleColor (ripple);
-        mSelectPlaylistButton.setStrokeColor (new ColorStateList (buttonStates, buttonColors));
-
-        mAlbumButton.setColor (color);
-
-        SpannableString s = new SpannableString (mSelectPlaylistButton.getText ());
-        s.setSpan (new ForegroundColorSpan (colorPrimary),
-                0,
-                mSelectPlaylistButton.getText ().length () - mPlaylists.items.get (mSelectedTrack).name.length () - 1,
-                Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
-
-        s.setSpan (new ForegroundColorSpan (colorSecondary),
-                mSelectPlaylistButton.getText ().length () - mPlaylists.items.get (mSelectedTrack).name.length (),
-                mSelectPlaylistButton.getText ().length (),
-                Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
-
-        mSelectPlaylistButton.setText (s);
-
-        String album = "Album " + mTrack.album.name;
-
-        SpannableString s2 = new SpannableString (album);
-        s2.setSpan (new ForegroundColorSpan (colorPrimary),
-                0,
-                album.length () - mTrack.album.name.length () - 1,
-                Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
-
-        s2.setSpan (new ForegroundColorSpan (colorSecondary),
-                album.length () - mTrack.album.name.length (),
-                album.length (),
-                Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
     }
 
     public void removeTrackView () {
@@ -523,11 +585,10 @@ public class DragView extends CoordinatorLayout implements OnThemeChangedListene
 
     @Override
     public void onThemeChanged (int id, Theme theme) {
-        Log.e ("THEME", "theme changed");
+        int themeColor = theme.getColor (ColorProfile.MAIN);
 
-        int c0 = theme.getColor (ColorProfile.SECONDARY);
-
-        Log.e ("THEME", "primary: " + c0);
+        Handler uiHandler = Handler.createAsync (Looper.getMainLooper ());
+        uiHandler.post (() -> setUiColor (themeColor));
     }
 
     public interface InteractionListener {
