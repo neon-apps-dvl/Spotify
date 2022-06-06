@@ -50,4 +50,5 @@
     <style name="Theme.Spotify.AlbumButton.Text" parent="Theme.Spotify.Text">
         <item name="android:textSize">14sp</item>
     </style>
+
 </resources>

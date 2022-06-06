@@ -4,5 +4,5 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     app:icon="@drawable/ic_more_24"
-    style="@style/Pixel.Components.Button.OutlinedButton.IconOnly">
+    style="@style/Pixel.Components.Button.FilledButton.IconOnly">
 </com.google.android.material.button.MaterialButton>

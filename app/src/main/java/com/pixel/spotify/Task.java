@@ -74,9 +74,7 @@ public abstract class Task {
         };
 
         mExecutor = Executors.newSingleThreadScheduledExecutor ();
-        mRunnable = () -> {
-            doWork (mStateListener);
-        };
+        mRunnable = () -> doWork (mStateListener);
 
         mExecutor.scheduleAtFixedRate (mRunnable, 0, period, TimeUnit.MILLISECONDS);
     }

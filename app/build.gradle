@@ -36,7 +36,6 @@ dependencies {
     implementation files('libs/com.pixel.surface-1.0.2.aar')
     implementation files('libs/com.pixel.datamap.DataMap-1.0.0.aar')
     implementation files('libs/com.pixel.spotifyapi.SpotifyApi-1.0.0.aar')
-//    implementation files('libs/com.pixel.components-1.0.11.aar')
     implementation "androidx.work:work-runtime:2.7.1"
     implementation "androidx.concurrent:concurrent-futures:1.1.0"
     implementation "androidx.concurrent:concurrent-listenablefuture-callback:1.0.0-beta01"
@@ -44,7 +43,7 @@ dependencies {
     implementation 'com.google.code.gson:gson:2.8.9'
     implementation 'com.spotify.android:auth:1.2.6'
     implementation 'com.squareup.retrofit:retrofit:1.9.0'
-    implementation 'neon.pixel:components:1.1.1-alpha02'
+    implementation 'neon.pixel:components:1.1.1-alpha05'
     testImplementation 'junit:junit:4.+'
     androidTestImplementation 'androidx.test.ext:junit:1.1.3'
     androidTestImplementation 'androidx.test.espresso:espresso-core:3.4.0'

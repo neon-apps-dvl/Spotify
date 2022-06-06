@@ -14,19 +14,12 @@
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/Theme.Spotify">
-        <service
-            android:name=".DataPullWorker"
-            android:enabled="true"
-            android:exported="true"></service>
+
         <service
             android:name=".ListenerService"
             android:enabled="true"
             android:exported="true"
             android:foregroundServiceType="connectedDevice" />
-        <service
-            android:name=".AppService"
-            android:enabled="true"
-            android:exported="true" />
 
         <activity
             android:name=".MainActivity"

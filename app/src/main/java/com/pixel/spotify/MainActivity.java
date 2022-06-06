@@ -4,31 +4,28 @@ import static com.pixel.spotify.ui.color.Color.UI_THEME;
 
 import android.annotation.SuppressLint;
 import android.content.Intent;
-import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
+import android.graphics.Bitmap;
 import android.os.Bundle;
 import android.util.Log;
-import android.view.MotionEvent;
 import android.view.View;
-import android.view.ViewTreeObserver;
 
 import androidx.appcompat.app.AppCompatActivity;
-import androidx.constraintlayout.widget.ConstraintLayout;
 import androidx.coordinatorlayout.widget.CoordinatorLayout;
 import androidx.core.view.WindowCompat;
-import androidx.fragment.app.FragmentManager;
-import androidx.fragment.app.FragmentTransaction;
+import androidx.fragment.app.FragmentContainerView;
+import androidx.lifecycle.ViewModelProvider;
+import androidx.work.OneTimeWorkRequest;
+import androidx.work.WorkManager;
 
 import com.pixel.spotify.spotify.adapter.SpotifyServiceAdapter;
-import com.pixel.spotify.spotify.adapter.SpotifyServiceManagerCallback;
-import com.pixel.spotify.spotify.models.PlaylistModel;
-import com.pixel.spotify.spotify.models.Playlists;
-import com.pixel.spotify.spotify.models.TrackModel;
-import com.pixel.spotify.spotify.models.UserModel;
+import com.pixel.spotify.ui.ContentFragment;
+import com.pixel.spotify.ui.ContentViewModel;
 import com.pixel.spotify.ui.MainBackdrop;
 import com.pixel.spotify.ui.UiState;
 import com.pixel.spotify.ui.color.ColorProfile;
-import com.pixel.spotify.ui.mainfragment.MainFragment;
+import com.pixel.spotifyapi.Objects.Track;
+import com.pixel.spotifyapi.Objects.Tracks;
 import com.pixel.spotifyapi.Objects.UserPrivate;
 import com.pixel.spotifyapi.SpotifyApi;
 import com.pixel.spotifyapi.SpotifyCallback;
@@ -41,9 +38,12 @@ import com.spotify.sdk.android.auth.AuthorizationClient;
 import com.spotify.sdk.android.auth.AuthorizationRequest;
 import com.spotify.sdk.android.auth.AuthorizationResponse;
 
-import java.util.List;
+import java.util.Collections;
+import java.util.concurrent.Executor;
+import java.util.concurrent.Executors;
 
 import neon.pixel.components.android.dynamictheme.DynamicTheme;
+import neon.pixel.components.bitmap.BitmapTools;
 import retrofit.client.Response;
 
 public class MainActivity extends AppCompatActivity implements OnUiStateChangedListener {
@@ -52,31 +52,19 @@ public class MainActivity extends AppCompatActivity implements OnUiStateChangedL
 
     private static final String CLIENT_ID = "86ef10fd39344e10a060ade09f7c7a78";
 
-    private static final String SELECTED_PLAYLIST = "selected";
     private static final String SPOTIFY_PREMIUM = "premium";
     private static final String SPOTIFY = "com.spotify.music";
 
     private static final int REQUEST_AUTH = 0;
-    private SpotifyApi spotifyApi;
-    private SpotifyService spotifyService;
-    private SpotifyAppRemote spotifyAppRemote;
+    private SpotifyService mSpotifyService;
+    private SpotifyAppRemote mSpotifyAppRemote;
 
-    private UserModel user;
-    private List <PlaylistModel> playlists;
+    private ContentViewModel mViewModel;
 
-    private ConstraintLayout mainView;
-
-    private FragmentManager fragmentManager;
-    private FragmentTransaction fragmentTransaction;
-    private MainFragment mainFragment;
     private MainBackdrop mMainBackdrop;
+    private FragmentContainerView mFragmentContainerView;
 
-    private String accessToken;
-
-    private Object trackLock;
-    private Object playlistsLock;
-
-    boolean shouldAllowTouch = true;
+    private ContentFragment mContentFragment;
 
     @SuppressLint ("ClickableViewAccessibility")
     @Override
@@ -85,56 +73,35 @@ public class MainActivity extends AppCompatActivity implements OnUiStateChangedL
 
         createDynamicTheme ();
 
+        WindowCompat.setDecorFitsSystemWindows (getWindow (), false);
+
         setContentView (R.layout.activity_main);
-        mainView = findViewById (R.id.main_view);
+
+        mViewModel = new ViewModelProvider (this).get (ContentViewModel.class);
 
         mMainBackdrop = findViewById (R.id.main_backdrop);
         mMainBackdrop.setOnStateChangedListener (isOpen -> {
-            if (isOpen) mainFragment.setEnabled (false);
-            else mainFragment.setEnabled (true);
+            if (isOpen) ;
+            else ;
         });
 
-        trackLock = new Object ();
-        playlistsLock = new Object ();
+        DynamicTheme.addOnThemeChangedListener (UI_THEME, mMainBackdrop);
 
-        mainView.getViewTreeObserver ().addOnPreDrawListener (new ViewTreeObserver.OnPreDrawListener () {
-            @Override
-            public boolean onPreDraw () {
-                if (trackLock == null && playlistsLock == null) {
-                    mainView.getViewTreeObserver ().removeOnPreDrawListener (this);
-                    return true;
-                } else return false;
-            }
-        });
+        mFragmentContainerView = new FragmentContainerView (this);
+        mFragmentContainerView.setLayoutParams (new CoordinatorLayout.LayoutParams (-1, -1));
+        mFragmentContainerView.setId (View.generateViewId ());
 
-        WindowCompat.setDecorFitsSystemWindows (getWindow (), false);
+        mContentFragment = new ContentFragment ();
 
-        CoordinatorLayout fragContainer = new CoordinatorLayout (this);
-        fragContainer.setLayoutParams (new CoordinatorLayout.LayoutParams (-1, -1));
-        fragContainer.setId (View.generateViewId ());
-
-        mainFragment = new MainFragment (spotifyService);
-        mainFragment.setUiStateChangedListener (this);
-
-        fragmentManager = getSupportFragmentManager ();
-        fragmentTransaction = fragmentManager.beginTransaction ();
-        fragmentTransaction.add (fragContainer.getId (), mainFragment)
+        getSupportFragmentManager ().beginTransaction ()
+                .add (mFragmentContainerView.getId (), mContentFragment)
                 .commit ();
 
-        mMainBackdrop.setFrontView (fragContainer);
-        
+        mMainBackdrop.setFrontView (mFragmentContainerView);
+
         if (checkSpotifyInstalled ()) {
             auth ();
         }
-    }
-
-    @Override
-    public boolean onTouchEvent (MotionEvent event) {
-        if (event.getAction () == MotionEvent.ACTION_UP) {
-
-        }
-
-        return super.onTouchEvent (event);
     }
 
     @Override
@@ -147,11 +114,6 @@ public class MainActivity extends AppCompatActivity implements OnUiStateChangedL
         super.onDestroy ();
     }
 
-    @Override
-    public void onBackPressed () {
-        super.onBackPressed ();
-    }
-
     protected void onActivityResult (int requestCode, int resultCode, Intent intent) {
         super.onActivityResult (requestCode, resultCode, intent);
 
@@ -160,77 +122,46 @@ public class MainActivity extends AppCompatActivity implements OnUiStateChangedL
 
             switch (response.getType ()) {
                 case TOKEN:
-                    accessToken = response.getAccessToken ();
+                    String accessToken = response.getAccessToken ();
 
-                    spotifyApi = new SpotifyApi ();
+                    SpotifyApi spotifyApi = new SpotifyApi ();
                     spotifyApi.setAccessToken (accessToken);
-                    spotifyService = spotifyApi.getService ();
+                    mSpotifyService = spotifyApi.getService ();
 
-                    mainFragment.setSpotifyService (spotifyService);
+                    SpotifyServiceAdapter.createInstance (mSpotifyService);
 
-                    spotifyService.getCurrentUser (new SpotifyCallback <UserPrivate> () {
-                        @Override
-                        public void failure (SpotifyError spotifyError) {
-                            Log.e (TAG, spotifyError.getMessage ());
-                        }
+                    OneTimeWorkRequest workRequest = new OneTimeWorkRequest.Builder (ContentWorker.class)
+                            .build ();
 
-                        @Override
-                        public void success (UserPrivate userPrivate, Response response) {
-                            if (isPremium (userPrivate)) {
-                                UserModel.from (userPrivate, new SpotifyServiceManagerCallback () {
-                                    @Override
-                                    public void onGetUser (UserModel userModel) {
-                                        user = userModel;
+                    WorkManager.getInstance (this)
+                            .enqueue (workRequest);
 
-                                        mainFragment.setUser (user);
+                    String track = "6KEO499uUuvv65wAfOltod";
+                            //"7h2OEj0ifXb3UdgvTmCqfY";
 
-                                        SharedPreferences prefs = getSharedPreferences (user.id, MODE_PRIVATE);
-                                        String selectedId = prefs.getString (SELECTED_PLAYLIST, null);
+                    SpotifyServiceAdapter.getInstance ()
+                            .getTracks (track, new SpotifyCallback <Tracks> () {
+                                @Override
+                                public void failure (SpotifyError spotifyError) {
 
-                                        SpotifyServiceAdapter.getTrack (spotifyService, user.id, 0, new SpotifyServiceManagerCallback () {
-                                            @Override
-                                            public void onGetTrack (TrackModel trackModel) {
-                                                super.onGetTrack (trackModel);
+                                }
 
-                                                runOnUiThread (() -> {
-                                                    mainFragment.setTrack (trackModel);
+                                @Override
+                                public void success (Tracks tracks, Response response) {
+                                    Executor executor = Executors.newSingleThreadExecutor ();
 
-                                                    trackLock = null;
-                                                });
-                                            }
-                                        });
+                                    executor.execute (() -> {
+                                        Track track = tracks.tracks.get (0);
+                                        Bitmap bitmap = BitmapTools.from (track.album.images.get (0).url);
 
-                                        SpotifyServiceAdapter.getUserPlaylists (spotifyService, user, new SpotifyServiceManagerCallback () {
-                                            int selected = 0;
+                                        AppRepo.getInstance ()
+                                                        .getNextTrack ();
 
-                                            @Override
-                                            public void onGetUserPlaylists (List <PlaylistModel> playlists) {
-                                                MainActivity.this.playlists = playlists;
-
-                                                Playlists p = new Playlists ();
-
-                                                for (PlaylistModel playlist : playlists) {
-                                                    p.add (playlist);
-
-                                                    if (playlist.id.equals (selectedId)) {
-                                                        selected = playlists.indexOf (playlist);
-                                                    }
-                                                }
-
-                                                runOnUiThread (() -> {
-                                                    mainFragment.setPlaylists (selected, p);
-
-                                                    mainFragment.updateTheme ();
-                                                });
-
-                                                playlistsLock = null;
-                                            }
-                                        });
-                                    }
-                                });
-                            }
-                        }
-                    });
+                                        PlayQueue.getInstance ()
+                                                .push (Collections.singletonMap (track, bitmap));
+                                    });
+                                }
+                            });
 
                     break;
 
@@ -242,7 +173,7 @@ public class MainActivity extends AppCompatActivity implements OnUiStateChangedL
         }
     }
 
-    public void createDynamicTheme () {
+    private void createDynamicTheme () {
         DynamicTheme.newInstance (UI_THEME, ColorProfile.class);
     }
 

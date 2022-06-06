@@ -2,12 +2,12 @@ package com.pixel.spotify.ui;
 
 import static com.pixel.spotify.ui.color.Color.DynamicTone.PRIMARY;
 import static com.pixel.spotify.ui.color.Color.DynamicTone.SECONDARY;
+import static com.pixel.spotify.ui.color.Color.DynamicTone.SURFACE;
 import static neon.pixel.components.Components.getPx;
 
 import android.animation.ArgbEvaluator;
 import android.animation.ValueAnimator;
 import android.content.Context;
-import android.graphics.Color;
 import android.text.Spannable;
 import android.text.SpannableString;
 import android.text.style.ForegroundColorSpan;
@@ -85,6 +85,10 @@ public class TrackInfoView extends ConstraintLayout {
         hct.setTone (SECONDARY);
         int colorSecondary = hct.toInt ();
 
+        hct = Hct.fromInt (mThemeColor);
+        hct.setTone (SURFACE);
+        int colorSurface = hct.toInt ();
+
         if (mTitle != null) {
             SpannableString s = new SpannableString (mTrackInfoView.getText ());
             s.setSpan (new ForegroundColorSpan (colorPrimary), 0, mTitle.length (), Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
@@ -110,95 +114,5 @@ public class TrackInfoView extends ConstraintLayout {
         });
 
         animator.start ();
-    }
-
-    public void updateColor2 (int color1) {
-        if (rAnimator != null && rAnimator.isRunning ()) return;
-
-        int r = Color.red (mThemeColor);
-        int g = Color.green (mThemeColor);
-        int b = Color.blue (mThemeColor);
-
-        int targetR = Color.red (color1);
-        int targetG = Color.green (color1);
-        int targetB = Color.blue (color1);
-
-        int[] rgb = new int[3];
-
-        rAnimator = ValueAnimator.ofInt (r, targetR);
-        rAnimator.setDuration (getResources ().getInteger (android.R.integer.config_shortAnimTime));
-        rAnimator.addUpdateListener (new ValueAnimator.AnimatorUpdateListener () {
-            @Override
-            public void onAnimationUpdate (ValueAnimator animation) {
-                int temp = (Integer) animation.getAnimatedValue ();
-
-                rgb[0] = temp;
-
-                int r = temp;
-                int g = rgb[1];
-                int b = rgb[2];
-
-                mThemeColor = Color.argb (255, r, g, b);
-
-//                Log.d ("debug", String.format ("r: %d g: %d b: %d  |  r: %d g: %d b: %d",
-//                        Color.red (mThemeColor), Color.green (mThemeColor), Color.blue (mThemeColor),
-//                        targetR, targetG, targetB));
-
-                setColor (mThemeColor);
-            }
-        });
-
-        gAnimator = ValueAnimator.ofInt (g, targetG);
-        gAnimator.setDuration (getResources ().getInteger (android.R.integer.config_shortAnimTime));
-        gAnimator.addUpdateListener (new ValueAnimator.AnimatorUpdateListener () {
-            @Override
-            public void onAnimationUpdate (ValueAnimator animation) {
-                int temp = (Integer) animation.getAnimatedValue ();
-
-                rgb[1] = temp;
-
-                int r = rgb[0];
-                int g = temp;
-                int b = rgb[2];
-
-                mThemeColor = Color.argb (255, r, g, b);
-
-//                Log.d ("debug", "g: " + temp + " targetG: " + targetG);
-
-//                Log.d ("debug", String.format ("r: %d g: %d b: %d  |  r: %d g: %d b: %d",
-//                        Color.red (mThemeColor), Color.green (mThemeColor), Color.blue (mThemeColor),
-//                        targetR, targetG, targetB));
-
-                setColor (mThemeColor);
-            }
-        });
-
-        bAnimator = ValueAnimator.ofInt (b, targetB);
-        bAnimator.setDuration (getResources ().getInteger (android.R.integer.config_shortAnimTime));
-        bAnimator.addUpdateListener (new ValueAnimator.AnimatorUpdateListener () {
-            @Override
-            public void onAnimationUpdate (ValueAnimator animation) {
-                int temp = (Integer) animation.getAnimatedValue ();
-
-                rgb[2] = temp;
-
-                int r = rgb[0];
-                int g = rgb[1];
-                int b = temp;
-
-                mThemeColor = Color.argb (255, r, g, b);
-//                Log.d ("debug", "b: " + temp + " targetB: " + targetB);
-
-//                Log.d ("debug", String.format ("r: %d g: %d b: %d  |  r: %d g: %d b: %d",
-//                        Color.red (mThemeColor), Color.green (mThemeColor), Color.blue (mThemeColor),
-//                        targetR, targetG, targetB));
-
-                setColor (mThemeColor);
-            }
-        });
-
-        rAnimator.start ();
-        gAnimator.start ();
-        bAnimator.start ();
     }
 }

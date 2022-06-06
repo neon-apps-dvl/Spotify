@@ -1,13 +1,17 @@
 package com.pixel.spotify.ui;
 
+import static com.pixel.spotify.ui.color.ColorProfile.PRIMARY;
 import static neon.pixel.components.Components.getPx;
+import static neon.pixel.components.android.color.Color.TONE_LIGHT;
+import static neon.pixel.components.android.color.Color.TONE_ON_LIGHT;
 
 import android.animation.ValueAnimator;
 import android.content.Context;
+import android.content.res.ColorStateList;
+import android.graphics.Color;
 import android.graphics.RenderEffect;
 import android.graphics.Shader;
 import android.util.AttributeSet;
-import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 
@@ -21,9 +25,12 @@ import androidx.core.view.WindowInsetsCompat;
 import com.google.android.material.button.MaterialButton;
 import com.pixel.spotify.R;
 
+import neon.pixel.components.android.dynamictheme.OnThemeChangedListener;
+import neon.pixel.components.android.theme.Theme;
 import neon.pixel.components.backdrop.Backdrop;
+import neon.pixel.components.color.Hct;
 
-public class MainBackdrop extends Backdrop {
+public class MainBackdrop extends Backdrop implements OnThemeChangedListener {
     private static final int BACK_VIEW_PADDING_DP = 24;
     private float mMaxOffset;
 
@@ -48,7 +55,6 @@ public class MainBackdrop extends Backdrop {
         mView.setBackground (null);
 
         mMenuButton = (MaterialButton) LayoutInflater.from (getContext ()).inflate (R.layout.menu_button, null);
-//        mMenuButton.setY (200);
         mMenuButton.setOnClickListener (v -> {
             if (!mIsOpen) open ();
             else close ();
@@ -60,9 +66,9 @@ public class MainBackdrop extends Backdrop {
             Insets insets = windowInsets.getInsets (WindowInsetsCompat.Type.systemBars ());
 
             MarginLayoutParams params = (MarginLayoutParams) mMenuButton.getLayoutParams ();
-            params.leftMargin = (int) (insets.left + getPx (context, 24));
+            params.leftMargin = insets.left + getPx (context, 24);
             params.rightMargin = insets.right;
-            params.topMargin = (int) (insets.top + getPx (context, 12));
+            params.topMargin = insets.top + getPx (context, 12);
             params.bottomMargin = insets.bottom;
 
             return WindowInsetsCompat.CONSUMED;
@@ -86,8 +92,6 @@ public class MainBackdrop extends Backdrop {
     }
 
     public void hideUi () {
-        Log.e ("debug2", "hideUi");
-
         mMenuButton.animate ()
                 .setDuration (getResources ().getInteger (android.R.integer.config_shortAnimTime))
                 .alpha (0f)
@@ -96,8 +100,6 @@ public class MainBackdrop extends Backdrop {
     }
 
     public void showUi () {
-        Log.e ("debug2", "showUi");
-
         mMenuButton.animate ()
                 .setDuration (getResources ().getInteger (android.R.integer.config_shortAnimTime))
                 .alpha (1f)
@@ -118,8 +120,6 @@ public class MainBackdrop extends Backdrop {
             @Override
             public void onAnimationUpdate (ValueAnimator animation) {
                 Float offset = (Float) animation.getAnimatedValue ();
-
-                Log.d ("offset", "offset: " + offset);
 
                 setOffset (offset.intValue ());
 
@@ -145,8 +145,6 @@ public class MainBackdrop extends Backdrop {
             public void onAnimationUpdate (ValueAnimator animation) {
                 Float offset = (Float) animation.getAnimatedValue ();
 
-                Log.e ("offset", "offset: " + offset);
-
                 setOffset (offset.intValue ());
 
                 int b = (int) (offset / mMaxOffset * getWidth () / 8);
@@ -161,6 +159,62 @@ public class MainBackdrop extends Backdrop {
 
     public void setOnStateChangedListener (OnStateChangedListener l) {
         mListener = l;
+    }
+
+    @Override
+    public void onThemeChangedListenerAdded (int id) {
+
+    }
+
+    @Override
+    public void onThemeChangedListenerRemoved (int id) {
+
+    }
+
+    @Override
+    public void onThemeChanged (int id, Theme theme) {
+        int color = theme.getColor (PRIMARY);
+
+        Hct hct = Hct.fromInt (color);
+        hct.setTone (TONE_LIGHT);
+
+        int c1 = hct.toInt ();
+
+        hct = Hct.fromInt (color);
+        hct.setTone (TONE_ON_LIGHT - 10);
+        int c2 = hct.toInt ();
+
+        Color holder = Color.valueOf (c1);
+
+        int[][] mMenuButtonRippleStates = new int[][] {
+                new int[] {android.R.attr.state_pressed}, // enabled
+                new int[] {android.R.attr.state_focused | android.R.attr.state_hovered}, // disabled
+                new int[] {android.R.attr.state_focused}, // disabled
+                new int[] {android.R.attr.state_hovered}, // unchecked
+                new int[] {}
+        };
+
+        int[] mMenuButtonRippleColors = new int[] {
+                Color.argb (0.12f * 255, holder.red (), holder.green (), holder.blue ()),
+                Color.argb (0.12f * 255, holder.red (), holder.green (), holder.blue ()),
+                Color.argb (0.12f * 255, holder.red (), holder.green (), holder.blue ()),
+                Color.argb (0.04f * 255, holder.red (), holder.green (), holder.blue ()),
+                Color.argb (0.00f * 255, holder.red (), holder.green (), holder.blue ()),
+        };
+
+        int[][] mMenuButtonStates = new int[][] {
+                new int[] {android.R.attr.checked}, // enabled
+                new int[] {-android.R.attr.checked}, // unchecked
+        };
+
+        int[] mMenuButtonColors = new int[] {
+                Color.argb (255, holder.red (), holder.green (), holder.blue ()),
+                Color.argb (255, holder.red (), holder.green (), holder.blue ()),
+        };
+
+        mMenuButton.setRippleColor (new ColorStateList (mMenuButtonRippleStates, mMenuButtonRippleColors));
+        mMenuButton.setBackgroundTintList (new ColorStateList (new int[][]{{}}, new int[] {c1}));
+        mMenuButton.setIconTint (new ColorStateList (new int[][]{{}}, new int[] {c2}));
     }
 
     public interface OnStateChangedListener {
