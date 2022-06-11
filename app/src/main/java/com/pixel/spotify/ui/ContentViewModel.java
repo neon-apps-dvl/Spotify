@@ -11,6 +11,7 @@ public class ContentViewModel extends ViewModel {
     private MutableLiveData <List <PlaylistWrapper>> mPlaylists;
     private MutableLiveData <PlaylistWrapper> mPinnedPlaylist;
     private MutableLiveData <TrackWrapper> mTrack;
+    private MutableLiveData <TrackWrapper> mNextTrack;
 
     public MutableLiveData <List <PlaylistWrapper>> getPlaylists () {
         if (mPlaylists == null) mPlaylists = new MutableLiveData <> ();
@@ -28,6 +29,12 @@ public class ContentViewModel extends ViewModel {
         if (mTrack == null) mTrack = new MutableLiveData <> ();
 
         return mTrack;
+    }
+
+    public MutableLiveData <TrackWrapper> getNextTrack () {
+        if (mNextTrack == null) mNextTrack = new MutableLiveData <> ();
+
+        return mNextTrack;
     }
 
     public LiveData <String> getUser () {
@@ -50,5 +57,9 @@ public class ContentViewModel extends ViewModel {
 
     public void setTrack (TrackWrapper track) {
         mTrack.setValue (track);
+    }
+
+    public void setNextTrack (TrackWrapper nextTrack) {
+        mNextTrack.setValue (nextTrack);
     }
 }

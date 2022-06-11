@@ -8,7 +8,7 @@ dependencyResolutionManagement {
             url = uri("https://maven.pkg.github.com/neon-apps-dvl/components")
             credentials {
                 username 'neon-apps-dvl'
-                password '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'//'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'
+                password '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'//'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'
             }
         }
     }

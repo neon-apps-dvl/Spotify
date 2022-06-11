@@ -8,7 +8,6 @@ import static neon.pixel.components.android.color.Color.TONE_ON_LIGHT;
 import android.animation.ValueAnimator;
 import android.content.Context;
 import android.content.res.ColorStateList;
-import android.graphics.Color;
 import android.graphics.RenderEffect;
 import android.graphics.Shader;
 import android.util.AttributeSet;
@@ -28,6 +27,7 @@ import com.pixel.spotify.R;
 import neon.pixel.components.android.dynamictheme.OnThemeChangedListener;
 import neon.pixel.components.android.theme.Theme;
 import neon.pixel.components.backdrop.Backdrop;
+import neon.pixel.components.color.Argb;
 import neon.pixel.components.color.Hct;
 
 public class MainBackdrop extends Backdrop implements OnThemeChangedListener {
@@ -73,6 +73,8 @@ public class MainBackdrop extends Backdrop implements OnThemeChangedListener {
 
             return WindowInsetsCompat.CONSUMED;
         });
+
+        mMenuButton.setVisibility (GONE);
 
         mFrontView.addView (mView);
         mFrontView.addView (mMenuButton);
@@ -175,46 +177,18 @@ public class MainBackdrop extends Backdrop implements OnThemeChangedListener {
     public void onThemeChanged (int id, Theme theme) {
         int color = theme.getColor (PRIMARY);
 
-        Hct hct = Hct.fromInt (color);
-        hct.setTone (TONE_LIGHT);
+        Hct c1 = Hct.fromInt (color);
+        c1.setTone (TONE_LIGHT);
 
-        int c1 = hct.toInt ();
+        Hct c2 = Hct.fromInt (color);
+        c2.setTone (TONE_ON_LIGHT);
 
-        hct = Hct.fromInt (color);
-        hct.setTone (TONE_ON_LIGHT - 10);
-        int c2 = hct.toInt ();
+        Argb c3 = Argb.from (c1.toInt ());
+        c3.setAlpha (0.16f * 255);
 
-        Color holder = Color.valueOf (c1);
-
-        int[][] mMenuButtonRippleStates = new int[][] {
-                new int[] {android.R.attr.state_pressed}, // enabled
-                new int[] {android.R.attr.state_focused | android.R.attr.state_hovered}, // disabled
-                new int[] {android.R.attr.state_focused}, // disabled
-                new int[] {android.R.attr.state_hovered}, // unchecked
-                new int[] {}
-        };
-
-        int[] mMenuButtonRippleColors = new int[] {
-                Color.argb (0.12f * 255, holder.red (), holder.green (), holder.blue ()),
-                Color.argb (0.12f * 255, holder.red (), holder.green (), holder.blue ()),
-                Color.argb (0.12f * 255, holder.red (), holder.green (), holder.blue ()),
-                Color.argb (0.04f * 255, holder.red (), holder.green (), holder.blue ()),
-                Color.argb (0.00f * 255, holder.red (), holder.green (), holder.blue ()),
-        };
-
-        int[][] mMenuButtonStates = new int[][] {
-                new int[] {android.R.attr.checked}, // enabled
-                new int[] {-android.R.attr.checked}, // unchecked
-        };
-
-        int[] mMenuButtonColors = new int[] {
-                Color.argb (255, holder.red (), holder.green (), holder.blue ()),
-                Color.argb (255, holder.red (), holder.green (), holder.blue ()),
-        };
-
-        mMenuButton.setRippleColor (new ColorStateList (mMenuButtonRippleStates, mMenuButtonRippleColors));
-        mMenuButton.setBackgroundTintList (new ColorStateList (new int[][]{{}}, new int[] {c1}));
-        mMenuButton.setIconTint (new ColorStateList (new int[][]{{}}, new int[] {c2}));
+        mMenuButton.setRippleColor (new ColorStateList (new int[][] {{}}, new int[] {c3.toInt ()}));
+        mMenuButton.setBackgroundTintList (new ColorStateList (new int[][]{{}}, new int[] {c1.toInt ()}));
+        mMenuButton.setIconTint (new ColorStateList (new int[][]{{}}, new int[] {c2.toInt ()}));
     }
 
     public interface OnStateChangedListener {

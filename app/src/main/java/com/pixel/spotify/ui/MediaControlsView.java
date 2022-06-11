@@ -2,30 +2,50 @@ package com.pixel.spotify.ui;
 
 import static com.google.android.material.bottomsheet.BottomSheetBehavior.STATE_COLLAPSED;
 import static com.google.android.material.bottomsheet.BottomSheetBehavior.STATE_EXPANDED;
+import static neon.pixel.components.Components.getPx;
 import static neon.pixel.components.Components.getPxF;
-import static neon.pixel.components.android.color.Color.TONE_LIGHT;
-import static neon.pixel.components.android.color.Color.TONE_ON_CONTAINER_DARK;
-import static neon.pixel.components.android.color.Color.TONE_ON_LIGHT;
 
 import android.content.Context;
 import android.content.res.ColorStateList;
+import android.graphics.Bitmap;
 import android.graphics.Outline;
 import android.graphics.drawable.Drawable;
+import android.text.SpannableString;
+import android.text.Spanned;
+import android.text.style.ForegroundColorSpan;
 import android.util.AttributeSet;
+import android.util.TypedValue;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewOutlineProvider;
+import android.widget.TextView;
 
 import androidx.annotation.LayoutRes;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.annotation.StringRes;
+import androidx.appcompat.widget.AppCompatSeekBar;
 import androidx.constraintlayout.widget.ConstraintLayout;
 import androidx.coordinatorlayout.widget.CoordinatorLayout;
+import androidx.palette.graphics.Palette;
+import androidx.viewpager2.widget.ViewPager2;
 
 import com.google.android.material.bottomsheet.BottomSheetBehavior;
+import com.google.android.material.button.MaterialButton;
+import com.google.android.material.tabs.TabLayout;
+import com.google.android.material.tabs.TabLayoutMediator;
+import com.pixel.spotify.Adapter;
+import com.pixel.spotify.AlbumView;
+import com.pixel.spotify.ArtistView;
 import com.pixel.spotify.R;
+import com.pixel.spotifyapi.Objects.ArtistSimple;
 import com.pixel.spotifyapi.Objects.Track;
 
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.TimeUnit;
+
+import neon.pixel.components.color.Argb;
 import neon.pixel.components.color.Hct;
 
 public class MediaControlsView extends CoordinatorLayout {
@@ -39,6 +59,11 @@ public class MediaControlsView extends CoordinatorLayout {
     private Track mTrack;
     private int mColor;
 
+    private String mTrackName;
+    private String mArtists;
+    private String mAlbum;
+    private long mDuration;
+
     private boolean mIsPlaying = false;
 
     private CoordinatorLayout mContainer;
@@ -46,13 +71,26 @@ public class MediaControlsView extends CoordinatorLayout {
     private ConstraintLayout mContent;
     private BottomSheetBehavior mBehavior;
 
-    private Drawable playDrawable;
-    private Drawable pauseDrawable;
+    private TextView mTrackNameView;
+    private MaterialButton mPlayButton;
+    private AppCompatSeekBar mSeekBar;
+    private TextView mProgressView;
+    private TextView mDurationView;
 
-//    private TextView mTrackInfoView;
-//    private MaterialButton mPlayButton;
-//    private SeekBar mSeekBar;
+    private TabLayout mTabLayout;
+    private ViewPager2 mViewPager;
 
+    @StringRes
+    private int [] mTabTitles = {
+            R.string.album_tab_title,
+            R.string.artist_tab_title
+    };
+
+    private AlbumView mAlbumView;
+    private List <ArtistView> mArtistViews;
+
+    private Drawable mPlayDrawable;
+    private Drawable mPauseDrawable;
 
     public MediaControlsView (@NonNull Context context) {
         super (context, null);
@@ -72,12 +110,38 @@ public class MediaControlsView extends CoordinatorLayout {
         mBehavior = BottomSheetBehavior.from (mView);
         mBehavior.addBottomSheetCallback (mCallback);
 
-        playDrawable = getResources ().getDrawable (R.drawable.ic_play_24, context.getTheme ());
-        pauseDrawable = getResources ().getDrawable (R.drawable.ic_pause_24, context.getTheme ());
+        mTrackNameView = findViewById (R.id.track_name_view);
+        mPlayButton = findViewById (R.id.play_button);
+        mSeekBar = findViewById (R.id.seek_bar);
+        mProgressView = findViewById (R.id.progress_view);
+        mDurationView = findViewById (R.id.duration_view);
 
-//        mTrackInfoView = findViewById (R.id.track_info_view);
-//        mPlayButton = findViewById (R.id.button_play);
-//        mSeekBar = findViewById (R.id.seek_bar);
+        mTabLayout = findViewById (R.id.tab_layout);
+        mViewPager = findViewById (R.id.view_pager);
+
+        mPlayDrawable = getResources ().getDrawable (R.drawable.ic_play_24, context.getTheme ());
+        mPauseDrawable = getResources ().getDrawable (R.drawable.ic_pause_24, context.getTheme ());
+
+        mPlayButton.setOnClickListener (v -> {
+            if (! mIsPlaying) {
+                mIsPlaying = true;
+                mPlayButton.setIcon (mPauseDrawable);
+            }
+            else {
+                mIsPlaying = false;
+                mPlayButton.setIcon (mPlayDrawable);
+            }
+        });
+
+        mAlbumView = new AlbumView (context);
+        mArtistViews = new ArrayList <> ();
+
+        List <View> items = new ArrayList <> ();
+        items.add (mAlbumView);
+
+        Adapter temp = new Adapter ();
+        temp.setItems (items);
+        mViewPager.setAdapter (temp);
     }
 
     @Override
@@ -86,35 +150,9 @@ public class MediaControlsView extends CoordinatorLayout {
 
         if (! changed) return;
 
-//        mPlayButton.setOnClickListener (v -> {
-//            if (! mIsPlaying) {
-//                mPlayButton.setIcon (pauseDrawable);
-//
-//                mIsPlaying = true;
-//            }
-//            else {
-//                mPlayButton.setIcon (playDrawable);
-//
-//                mIsPlaying = false;
-//            }
-//        });
-//
-//        mSeekBar.setOnSeekBarChangeListener (new android.widget.SeekBar.OnSeekBarChangeListener () {
-//            @Override
-//            public void onProgressChanged (android.widget.SeekBar seekBar, int progress, boolean fromUser) {
-//
-//            }
-//
-//            @Override
-//            public void onStartTrackingTouch (android.widget.SeekBar seekBar) {
-//
-//            }
-//
-//            @Override
-//            public void onStopTrackingTouch (android.widget.SeekBar seekBar) {
-//
-//            }
-//        });
+//        new TabLayoutMediator (mTabLayout, mViewPager, (tab, position) -> {
+//            tab.setText (getResources ().getString (mTabTitles [position])); // i love you so fucking much
+//        }).attach ();
     }
 
     @Override
@@ -135,48 +173,95 @@ public class MediaControlsView extends CoordinatorLayout {
         });
     }
 
-    public void setTrackInfo (Track track) {
-        mTrack = track;
+    public void setTrack (TrackWrapper wrappedTrack) {
+        Track track = wrappedTrack.track;
+        Bitmap bitmap = wrappedTrack.thumbnail;
 
-        setColor (mColor);
-//        mTrackInfoView.setAutoSizeTextTypeUniformWithConfiguration (getPx (getContext (), 12), getPx (getContext (), 24), 1, TypedValue.COMPLEX_UNIT_PX);
+        List <View> tabs = new ArrayList <> ();
+
+        mAlbumView = new AlbumView (getContext ());
+        tabs.add (mAlbumView);
+
+        mArtistViews.clear ();
+
+        for (ArtistSimple artist : track.artists) {
+            ArtistView artistView = new ArtistView (getContext ());
+            mArtistViews.add (artistView);
+        }
+
+        tabs.addAll (mArtistViews);
+
+        Adapter adapter = new Adapter ();
+        adapter.setItems (tabs);
+        mViewPager.setAdapter (adapter);
+
+        new TabLayoutMediator (mTabLayout, mViewPager, (tab, position) -> {
+            if (position == 0) return;
+
+            tab.setText (track.artists.get (position - 1) .name);
+//                tab.setText (track.album.name); // i love you so fucking much
+        }).attach ();
+
+        SpannableString trackName = new SpannableString (track.name + " "  + track.artists.get (0).name);
+        int color = Palette.from (bitmap).generate ()
+                .getDominantSwatch ()
+                .getRgb ();
+
+        Hct surfaceColor = Hct.fromInt (color);
+        surfaceColor.setTone (10);
+
+        Hct primaryColor = Hct.fromInt (color);
+        primaryColor.setTone (90);
+
+        Argb c = Argb.from (primaryColor.toInt ());
+        c.setAlpha (0.6f * 255);
+        int secondaryColor = c.toInt ();
+
+        c.setAlpha (0.24f * 255);
+        int tertiaryColor = c.toInt ();
+
+        c.setAlpha (0.16f * 255);
+        int buttonColor = c.toInt ();
+
+        mContent.setBackgroundTintList (new ColorStateList (new int[][] {{}}, new int[] {surfaceColor.toInt ()}));
+
+        trackName.setSpan (new ForegroundColorSpan (primaryColor.toInt ()), 0, track.name.length (), Spanned.SPAN_INCLUSIVE_INCLUSIVE);
+        trackName.setSpan (new ForegroundColorSpan (secondaryColor), track.name.length () + 1, trackName.length (), Spanned.SPAN_INCLUSIVE_INCLUSIVE);
+        mTrackNameView.setText (trackName);
+        mTrackNameView.setAutoSizeTextTypeUniformWithConfiguration (getPx (getContext (), 16), getPx (getContext (), 32), 1, TypedValue.COMPLEX_UNIT_PX);
+
+        mProgressView.setText ("00:00");
+        mDurationView.setText (TimeUnit.MILLISECONDS.toMinutes (track.duration_ms)
+                + ":"
+                + (TimeUnit.MILLISECONDS.toSeconds(track.duration_ms) -
+                TimeUnit.MINUTES.toSeconds(TimeUnit.MILLISECONDS.toMinutes(track.duration_ms))));
+
+        mPlayButton.setIconTint (new ColorStateList (new int[][] {{}}, new int[] {primaryColor.toInt ()}));
+        mPlayButton.setRippleColor (new ColorStateList (new int[][] {{}}, new int[] {buttonColor}));
+
+        mSeekBar.setProgressBackgroundTintList (new ColorStateList (new int[][]{{}}, new int[] {tertiaryColor}));
+        mSeekBar.setProgressTintList (new ColorStateList (new int[][]{{}}, new int[] {primaryColor.toInt ()}));
+        mSeekBar.setThumbTintList (new ColorStateList (new int[][]{{}}, new int[] {primaryColor.toInt ()}));
+
+        mProgressView.setTextColor (tertiaryColor);
+        mDurationView.setTextColor (tertiaryColor);
+
+        mTabLayout.setTabTextColors (secondaryColor, primaryColor.toInt ());
+        mTabLayout.setSelectedTabIndicatorColor (primaryColor.toInt ());
+
+        SpannableString albumTabTitle = new SpannableString ("From " + track.album.name);
+        albumTabTitle.setSpan (new ForegroundColorSpan (secondaryColor), 0, 4, Spanned.SPAN_INCLUSIVE_INCLUSIVE);
+        albumTabTitle.setSpan (new ForegroundColorSpan (primaryColor.toInt ()), 5, albumTabTitle.length (), Spanned.SPAN_INCLUSIVE_INCLUSIVE);
+
+        mTabLayout.getTabAt (0).setText (albumTabTitle);
+
+//        for (int i = 0; i < track.artists.size (); i ++) {
+//            mTabLayout.getTabAt (i + 1).setText (track.artists.get (i).name);
+//        }
     }
 
-    public void setColor (int color) {
-        mColor = color;
-
-        Hct hct = Hct.fromInt (color);
-        hct.setTone (TONE_ON_LIGHT - 10);
-        int c1 = hct.toInt ();
-
-        hct = Hct.fromInt (color);
-        hct.setTone (TONE_ON_CONTAINER_DARK);
-        int c2 = hct.toInt ();
-
-        hct = Hct.fromInt (color);
-        hct.setTone (TONE_LIGHT);
-        int c3 = hct.toInt ();
-
-        mContent.setBackgroundTintList (new ColorStateList (new int[][] {{}}, new int[] {c3}));
-
-//        mPlayButton.setIconTint (new ColorStateList (new int[][] {{}}, new int[] {c2}));
-//        mPlayButton.setRippleColor (new ColorStateList (new int[][] {{}}, new int[] {c1}));
-
-//        mSeekBar.setProgressTintList (new ColorStateList (new int[][] {{}}, new int[] {c2}));
-//        mSeekBar.setProgressBackgroundTintList (new ColorStateList (new int[][] {{}}, new int[] {c2}));
-//        mSeekBar.setThumbTintList (new ColorStateList (new int[][] {{}}, new int[] {c2}));
-//        mSeekBar.setTickMarkTintList (new ColorStateList (new int[][] {{}}, new int[] {c2}));
-
-//        if (mTrack != null) {
-//            String title = mTrack.name;
-//            String artist = mTrack.artists.get (0).name;
-//
-//            SpannableString s = new SpannableString (title + " " + artist);
-//            s.setSpan (new ForegroundColorSpan (c1), 0, title.length (), Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
-//            s.setSpan (new ForegroundColorSpan (c2), title.length () + 1, s.toString ().length (), Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
-//
-//            mTrackInfoView.setText (s);
-//        }
+    public void setAlbum (AlbumWrapper album) {
+        mAlbumView.setAlbum (album);
     }
 
     public void addBottomSheetCallback (BottomSheetBehavior.BottomSheetCallback c) {

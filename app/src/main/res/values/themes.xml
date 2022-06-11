@@ -18,10 +18,10 @@
         <item name="colorOnTertiaryContainer">#ffc6c6c6</item>
 
 
-        <item name="colorSurface">#121212</item>
+<!--        <item name="colorSurface">#121212</item>-->
         <item name="android:windowBackground">#121212</item>
         <item name="android:windowSplashScreenBackground">#121212</item>
-        <item name="android:background">#121212</item>
+<!--        <item name="android:background">#121212</item>-->
         <item name="colorOnBackground">#ffffff</item>
         <item name="colorOnSurface">#ffffff</item>
         <item name="colorError">#cf6679</item>

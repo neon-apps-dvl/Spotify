@@ -3,11 +3,7 @@ package com.pixel.spotify.ui;
 import static android.view.MotionEvent.ACTION_DOWN;
 import static android.view.MotionEvent.ACTION_MOVE;
 import static android.view.MotionEvent.ACTION_UP;
-import static com.google.android.material.bottomsheet.BottomSheetBehavior.STATE_COLLAPSED;
-import static com.pixel.spotify.ui.color.Color.DynamicTone.PRIMARY;
-import static com.pixel.spotify.ui.color.Color.DynamicTone.SECONDARY;
-import static com.pixel.spotify.ui.color.Color.DynamicTone.SURFACE;
-import static com.pixel.spotify.ui.color.Color.UI_THEME;
+import static com.google.android.material.bottomsheet.BottomSheetBehavior.STATE_EXPANDED;
 import static neon.pixel.components.Components.getPx;
 
 import android.animation.Animator;
@@ -18,8 +14,6 @@ import android.graphics.Bitmap;
 import android.graphics.Color;
 import android.graphics.RenderEffect;
 import android.graphics.Shader;
-import android.graphics.drawable.BitmapDrawable;
-import android.graphics.drawable.ColorDrawable;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
@@ -41,22 +35,21 @@ import androidx.palette.graphics.Palette;
 
 import com.google.android.material.bottomsheet.BottomSheetBehavior;
 import com.pixel.spotify.AppRepo;
-import com.pixel.spotify.PlayQueue;
 import com.pixel.spotify.R;
 import com.pixel.spotify.spotify.adapter.SpotifyServiceAdapter;
 import com.pixel.spotify.ui.color.ColorProfile;
+import com.pixel.spotifyapi.Objects.Album;
 import com.pixel.spotifyapi.Objects.Track;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import java.util.concurrent.Executors;
 
 import neon.pixel.components.android.dynamictheme.DynamicTheme;
 import neon.pixel.components.android.dynamictheme.OnThemeChangedListener;
 import neon.pixel.components.android.theme.Theme;
 import neon.pixel.components.bitmap.BitmapTools;
-import neon.pixel.components.color.Hct;
+import retrofit.Callback;
 import retrofit.RetrofitError;
 import retrofit.client.Response;
 
@@ -135,11 +128,17 @@ public class ContentFragment extends Fragment implements OnThemeChangedListener,
         });
 
         mContentViewModel.getPinnedPlaylist ().observe (requireActivity (), pinnedPlaylist -> {
+            mPinnedPlaylist = pinnedPlaylist;
 
+            if (true) return; // cos i fucking cba to deal with this rn
+
+            mPlaylistView.setImageBitmap (mPinnedPlaylist.thumbnail);
         });
 
         mContentViewModel.getTrack ().observe (requireActivity (), track -> {
-            Bitmap trackBitmap = track.thumbnail;
+            mTrack = track;
+
+            Bitmap trackBitmap = mTrack.thumbnail;
 
             mTrackView.setImageBitmap (trackBitmap);
 
@@ -147,190 +146,22 @@ public class ContentFragment extends Fragment implements OnThemeChangedListener,
             float x = (trackBitmap.getWidth () - w) / 2;
 
             Bitmap surfaceBitmap = BitmapTools.from (trackBitmap, (int) x, 0, (int) w, trackBitmap.getHeight ());
-            mTempSurfaceView.setImageBitmap (mSurfaceBitmap);
-            mTempSurfaceView.setVisibility (View.VISIBLE);
-
             mSurfaceView.setImageBitmap (surfaceBitmap);
 
-            mTempSurfaceView.animate ()
-                    .alpha (0f)
-                    .setDuration (getResources ().getInteger (android.R.integer.config_shortAnimTime))
-                    .setListener (new AnimatorListenerAdapter () {
-                        @Override
-                        public void onAnimationEnd (Animator animation) {
-                            super.onAnimationEnd (animation);
+            mMediaControlsView.setTrack (track);
 
-                            mTempSurfaceView.setVisibility (View.GONE);
-                        }
-                    })
-                    .start ();
-            mSurfaceBitmap = surfaceBitmap;
-
-            int trackColorRgb = Palette.from (trackBitmap)
-                    .generate ()
-                    .getDominantSwatch ()
-                    .getRgb ();
-
-            int trackColorArgb = Color.argb (128,
-                    Color.red (trackColorRgb),
-                    Color.green (trackColorRgb),
-                    Color.blue (trackColorRgb));
-
-            ValueAnimator argbAnimator = ValueAnimator.ofObject (new ArgbEvaluator (),
-                    mSurfaceOverlayColor,
-                    trackColorArgb);
-
-            argbAnimator.setDuration (getResources ().getInteger (android.R.integer.config_shortAnimTime));
-            argbAnimator.addUpdateListener (animation -> {
-                mSurfaceOverlayColor = (int) animation.getAnimatedValue ();
-
-                mSurfaceViewOverlay.setBackgroundColor ((Integer) animation.getAnimatedValue ());
-            });
-
-            argbAnimator.setStartDelay (2000);
-            argbAnimator.start ();
+            DynamicTheme.getTheme (-1)
+                    .setColor (ColorProfile.PRIMARY, Palette.from (trackBitmap).generate ()
+                            .getDominantSwatch ()
+                            .getRgb ());
+            DynamicTheme.notifyThemeChanged (-1);
         });
 
-//        Executors.newSingleThreadExecutor ().
-//                execute (() -> getTrack (track -> {
-//                    Handler.createAsync (Looper.getMainLooper ())
-//                            .post (() -> mContentViewModel.setTrack (track));
-//                }));
-    }
+        mContentViewModel.getNextTrack ().observe (requireActivity (), nextTrack -> {
+            mNextTrack = nextTrack;
 
-    private TrackView createTrackView (Map <Track, Bitmap> track) {
-        TrackView trackView = new TrackView (getContext (), getView ().getWidth () / 2, getView ().getHeight () / 2);
-        trackView.setTrack (track);
-        trackView.setInteractionListener (new TrackView.InteractionListener () {
-            final float PEEK_BOUND = getView ().getWidth () * 0.5f;
-
-            boolean pInPeek = false;
-            boolean nowInPeek = false;
-
-            boolean isPeeking = false;
-            boolean isState = false;
-
-            @Override
-            public void onPositionChanged (float x, float y, boolean down) {
-                pInPeek = nowInPeek;
-
-                if (x >= PEEK_BOUND) {
-                    nowInPeek = true;
-                } else {
-                    nowInPeek = false;
-                }
-
-                if (nowInPeek && !pInPeek) isPeeking = true;
-                else isPeeking = false;
-                if (!nowInPeek && pInPeek) isState = true;
-                else isState = false;
-
-                if (isPeeking) {
-                    mTrackView.animate ()
-                            .setDuration (getResources ().getInteger (android.R.integer.config_shortAnimTime))
-                            .scaleX (0.5f)
-                            .scaleY (0.5f)
-                            .start ();
-
-                    mPlaylistView.animate ()
-                            .setDuration (getResources ().getInteger (android.R.integer.config_shortAnimTime))
-                            .x (getView ().getWidth () - mPlaylistView.getWidth () - 100)
-                            .scaleX (1.25f)
-                            .scaleY (1.25f)
-                            .start ();
-                }
-
-                if (isState) {
-                    mTrackView.animate ()
-                            .setDuration (getResources ().getInteger (android.R.integer.config_shortAnimTime))
-                            .scaleX (1f)
-                            .scaleY (1f)
-                            .start ();
-
-                    mPlaylistView.animate ()
-                            .setDuration (getResources ().getInteger (android.R.integer.config_shortAnimTime))
-                            .x (getView ().getWidth () - 100)
-                            .scaleX (1f)
-                            .scaleY (1f)
-                            .start ();
-                }
-            }
+            mNextTrackView.setImageBitmap (mNextTrack.thumbnail);
         });
-
-        return trackView;
-    }
-
-    private void setTrackView (TrackView trackView) {
-    }
-
-    private void setPlaylistView (Bitmap bitmap) {
-    }
-
-    private void updateTheme (Bitmap bitmap) {
-        int baseColor = Palette.from (bitmap)
-                .generate ()
-                .getDominantSwatch ()
-                .getRgb ();
-
-        Hct hct = Hct.fromInt (baseColor);
-        hct.setTone (PRIMARY);
-        int colorPrimary = hct.toInt ();
-
-        hct.setTone (SECONDARY);
-        int colorSecondary = hct.toInt ();
-
-        hct.setTone (SURFACE);
-        int colorSurface = hct.toInt ();
-
-        Theme theme = DynamicTheme.getTheme (UI_THEME);
-        theme.setColor (ColorProfile.PRIMARY, colorPrimary);
-        theme.setColor (ColorProfile.SECONDARY, colorSecondary);
-        theme.setColor (ColorProfile.SURFACE, colorSurface);
-
-        mMediaControlsView.setColor (baseColor);
-
-        DynamicTheme.notifyThemeChanged (UI_THEME);
-    }
-
-    private void setSurface (Bitmap bitmap) {
-        float w = (float) mSurfaceView.getWidth () / (float) mSurfaceView.getHeight () * bitmap.getHeight ();
-        float x = (bitmap.getWidth () - w) / 2;
-
-        Bitmap resizedBitmap = BitmapTools.from (bitmap, (int) x, 0, (int) w, bitmap.getHeight ());
-
-        mTempSurfaceView.setVisibility (View.VISIBLE);
-        mTempSurfaceView.setAlpha (1f);
-        mTempSurfaceView.setBackground (mSurfaceView.getBackground ());
-        mTempSurfaceView.setRenderEffect (RenderEffect.createBlurEffect (mSurfaceView.getHeight () / 8, mSurfaceView.getHeight () / 8, Shader.TileMode.CLAMP));
-
-        mSurfaceView.setBackground (new BitmapDrawable (getResources (), resizedBitmap));
-        mSurfaceView.setRenderEffect (RenderEffect.createBlurEffect (mSurfaceView.getHeight () / 8, mSurfaceView.getHeight () / 8, Shader.TileMode.CLAMP));
-
-        mTempSurfaceView.animate ()
-                .setDuration (getResources ().getInteger (android.R.integer.config_shortAnimTime))
-                .alpha (0f)
-                .start ();
-
-        ValueAnimator valueAnimator = ValueAnimator.ofObject (new ArgbEvaluator (),
-                ((ColorDrawable) mSurfaceViewOverlay.getBackground ()).getColor (),
-                DynamicTheme.getTheme (UI_THEME)
-                        .getColor (ColorProfile.SURFACE));
-
-        valueAnimator.setDuration (getResources ().getInteger (android.R.integer.config_shortAnimTime));
-        valueAnimator.addUpdateListener (animation -> {
-            int c = (Integer) animation.getAnimatedValue ();
-
-            int cl = Color.argb (
-                    128,
-                    Color.red (c),
-                    Color.green (c),
-                    Color.blue (c)
-            );
-
-            mSurfaceViewOverlay.setBackgroundColor (cl);
-        });
-
-        valueAnimator.start ();
     }
 
     @Override
@@ -348,7 +179,7 @@ public class ContentFragment extends Fragment implements OnThemeChangedListener,
         mNextTrackView.setY (viewHeight / 2 - mTrackView.getHeight () / 2);
         mNextTrackView.setVisibility (View.GONE);
 
-        mPlaylistView.setX (getView ().getWidth () - 100);
+        mPlaylistView.setX (getView ().getWidth ());
         mPlaylistView.setY (getView ().getHeight () / 2 - mPlaylistView.getHeight () / 2);
 
         mMediaControlsView.addBottomSheetCallback (new BottomSheetBehavior.BottomSheetCallback () {
@@ -359,31 +190,37 @@ public class ContentFragment extends Fragment implements OnThemeChangedListener,
 
             @Override
             public void onStateChanged (@NonNull View bottomSheet, int newState) {
-                if (newState == STATE_COLLAPSED) {
+                if (newState == STATE_EXPANDED) {
+                    SpotifyServiceAdapter.getInstance ()
+                            .getAlbum (mTrack.track.album.id, new Callback <Album> () {
+                                @Override
+                                public void success (Album album, Response response) {
+                                    AlbumWrapper albumWrapper = new AlbumWrapper (album, null);
 
+                                    Log.e ("ALBUM", "album: " + album.name);
+
+                                    mMediaControlsView.setAlbum (albumWrapper);
+                                }
+
+                                @Override
+                                public void failure (RetrofitError error) {
+
+                                }
+                            });
                 }
             }
 
             @Override
             public void onSlide (@NonNull View bottomSheet, float slideOffset) {
-                float anchorX = getView ().getWidth () / 2 - mTrackView.getWidth () / 2;
-                float anchorY = getView ().getHeight () / 2 - mTrackView.getHeight () / 2;
+                int dy = (int) (getView ().getHeight () / 2 - mTrackView.getHeight () / 2 - mMediaControlsView.getY () + mTrackView.getHeight () * 1f);
+                int sy = (int) (slideOffset * dy);
+                int y = (int) (getView ().getHeight () / 2 - mTrackView.getHeight () / 2 - sy);
 
-                float nX = x + (anchorX - x) * (1 - slideOffset);
-                float nY = y + (anchorY - y) * (1 - slideOffset);
-
-                float s = 1 - slideOffset * SCALE;
-
-                Log.e ("S", "o: " + nX);
-
-                mTrackView.setX (nX);
-                mTrackView.setY (nY);
-                mTrackView.setScaleX (s);
-                mTrackView.setScaleY (s);
+                mTrackView.setY (y);
+                mTrackView.setScaleX (1 - slideOffset * 0.5f);
+                mTrackView.setScaleY (1 - slideOffset * 0.5f);
             }
         });
-
-//        mMediaControlsView.setColor (Color.RED);
     }
 
     @Override
@@ -394,6 +231,18 @@ public class ContentFragment extends Fragment implements OnThemeChangedListener,
     @Override
     public void onDestroy () {
         super.onDestroy ();
+
+        mContentViewModel.getUser ().removeObservers (requireActivity ());
+        mContentViewModel.getTrack ().removeObservers (requireActivity ());
+        mContentViewModel.getNextTrack ().removeObservers (requireActivity ());
+        mContentViewModel.getPlaylists ().removeObservers (requireActivity ());
+        mContentViewModel.getPinnedPlaylist ().removeObservers (requireActivity ());
+
+        mContentViewModel.setUser (mUser);
+        mContentViewModel.setTrack (mTrack);
+        mContentViewModel.setNextTrack (mNextTrack);
+        mContentViewModel.setPlaylists (mPlaylists);
+        mContentViewModel.setPinnedPlaylist (mPinnedPlaylist);
     }
 
     @Override
@@ -404,29 +253,111 @@ public class ContentFragment extends Fragment implements OnThemeChangedListener,
                     public void success (Track track, Response response) {
                         Executors.newSingleThreadExecutor ()
                                 .execute (() -> {
-                                    Bitmap trackThumbnail = BitmapTools.from (track.album.images.get (0).url);
-
-                                    mNextTrack = new TrackWrapper (track, trackThumbnail);
+                                    Bitmap nextTrackBitmap = BitmapTools.from (track.album.images.get (0).url);
 
                                     if (mNextTrack != null) {
-                                        mTrack = mNextTrack;
-                                        mNextTrack = new TrackWrapper (track, trackThumbnail);
-                                    }
+                                        Log.e ("CF", "next track not null");
 
-                                    Handler.createAsync (Looper.getMainLooper ())
-                                                    .post (() -> mContentViewModel.setTrack (mTrack));
+                                        mTrack = mNextTrack;
+                                        mNextTrack = new TrackWrapper (track, nextTrackBitmap);
+
+                                        Bitmap trackBitmap = mTrack.thumbnail;
+
+                                        Log.e ("CF", "track: " + mTrack.track.name);
+                                        Log.e ("CF", "next track: " + mNextTrack.track.name);
+
+                                        // perform anim
+
+                                        float w = (float) mSurfaceView.getWidth () / (float) mSurfaceView.getHeight () * trackBitmap.getHeight ();
+                                        float x = (trackBitmap.getWidth () - w) / 2;
+
+                                        Bitmap surfaceBitmap = BitmapTools.from (trackBitmap, (int) x, 0, (int) w, trackBitmap.getHeight ());
+
+                                        int trackColorRgb = Palette.from (trackBitmap)
+                                                .generate ()
+                                                .getDominantSwatch ()
+                                                .getRgb ();
+
+                                        int trackColorArgb = Color.argb (128,
+                                                Color.red (trackColorRgb),
+                                                Color.green (trackColorRgb),
+                                                Color.blue (trackColorRgb));
+
+                                        Handler.createAsync (Looper.getMainLooper ())
+                                                .post (() -> {
+                                                    mTempSurfaceView.setImageBitmap (mSurfaceBitmap);
+                                                    mTempSurfaceView.setVisibility (View.VISIBLE);
+
+                                                    mTrackView.setImageBitmap (trackBitmap);
+                                                    mSurfaceView.setImageBitmap (surfaceBitmap);
+
+                                                    mTempSurfaceView.animate ()
+                                                            .alpha (0f)
+                                                            .setDuration (getResources ().getInteger (android.R.integer.config_shortAnimTime))
+                                                            .setListener (new AnimatorListenerAdapter () {
+                                                                @Override
+                                                                public void onAnimationEnd (Animator animation) {
+                                                                    super.onAnimationEnd (animation);
+
+                                                                    mTempSurfaceView.setVisibility (View.GONE);
+                                                                }
+                                                            })
+                                                            .start ();
+
+                                                    mSurfaceBitmap = surfaceBitmap;
+
+                                                    ValueAnimator argbAnimator = ValueAnimator.ofObject (new ArgbEvaluator (),
+                                                            mSurfaceOverlayColor,
+                                                            trackColorArgb);
+
+                                                    argbAnimator.setDuration (getResources ().getInteger (android.R.integer.config_shortAnimTime));
+                                                    argbAnimator.addUpdateListener (animation -> {
+                                                        mSurfaceOverlayColor = (int) animation.getAnimatedValue ();
+
+                                                        mSurfaceViewOverlay.setBackgroundColor ((Integer) animation.getAnimatedValue ());
+                                                    });
+
+                                                    argbAnimator.addListener (new AnimatorListenerAdapter () {
+                                                        @Override
+                                                        public void onAnimationEnd (Animator animation) {
+                                                            super.onAnimationEnd (animation);
+
+                                                            // save state
+
+                                                            mContentViewModel.setUser (mUser);
+                                                            mContentViewModel.setTrack (mTrack);
+                                                            mContentViewModel.setNextTrack (mNextTrack);
+                                                            mContentViewModel.setPlaylists (mPlaylists);
+                                                            mContentViewModel.setPinnedPlaylist (mPinnedPlaylist);
+                                                        }
+                                                    });
+
+                                                    argbAnimator.start ();
+
+                                                });
+                                        // anim end
+
+                                    }
+                                    else {
+                                        Log.e ("CF", "next track null, getting next");
+
+                                        mNextTrack = new TrackWrapper (track, nextTrackBitmap);
+                                        AppRepo.getInstance ()
+                                                .getNextTrack ();
+                                    }
                                 });
                     }
 
                     @Override
                     public void failure (RetrofitError error) {
-
                     }
                 });
     }
 
     @Override
     public void onPlaylistsChanged (List <String> playlists) {
+        if (true) return;
+
         for (String playlist : playlists) {
 
         }
@@ -436,6 +367,8 @@ public class ContentFragment extends Fragment implements OnThemeChangedListener,
 
     @Override
     public void onPinnedPlaylistChanged (String pinnedPlaylist) {
+        if (true) return;
+
         mContentViewModel.setPinnedPlaylist (new PlaylistWrapper ());
     }
 
@@ -452,20 +385,6 @@ public class ContentFragment extends Fragment implements OnThemeChangedListener,
     @Override
     public void onThemeChanged (int id, Theme theme) {
 
-    }
-
-    private void getTrack (Callback c) {
-        PlayQueue playQueue = PlayQueue.getInstance ();
-
-        while (playQueue.peek () == null) {
-
-        }
-
-        c.onGet (playQueue.pop ());
-    }
-
-    interface Callback {
-        void onGet (Map <Track, Bitmap> track);
     }
 
     private class OnTouchListener implements View.OnTouchListener {
@@ -490,6 +409,8 @@ public class ContentFragment extends Fragment implements OnThemeChangedListener,
 
         private float mSx;
         private float mSy;
+
+        private float mPx;
 
         private float mIx;
         private float mIy;
@@ -518,6 +439,9 @@ public class ContentFragment extends Fragment implements OnThemeChangedListener,
         @Override
         public boolean onTouch (View v, MotionEvent event) {
             if (event.getAction () == ACTION_DOWN) {
+                if (mXAnimator != null && mXAnimator.isRunning ()) mXAnimator.cancel ();
+                if (mYAnimator != null && mYAnimator.isRunning ()) mYAnimator.cancel ();
+
                 mX = v.getX ();
                 mY = v.getY ();
 
@@ -529,6 +453,8 @@ public class ContentFragment extends Fragment implements OnThemeChangedListener,
 
             if (event.getAction () == ACTION_MOVE) {
                 mSy = (event.getRawY () - mTy) / mViewHeight * mMaxSy;
+
+                mPx = mViewWidth - (v.getX () + v.getWidth () / 2 - mViewWidth / 2) / mViewWidth / 2 * getPx (getContext (), 256);
 
                 if (event.getRawX () + mDx + v.getWidth () / 2 > mDismissBound && event.getRawX () + mDx + v.getWidth () / 2 < mPeekBound) {
                     if (mIdleLock == null) {
@@ -579,6 +505,8 @@ public class ContentFragment extends Fragment implements OnThemeChangedListener,
                 v.setX (mX);
                 mY = mViewHeight / 2 - v.getHeight () / 2 + mSy;
                 v.setY (mY);
+
+                mPlaylistView.setX (mPx);
             }
             if (event.getAction () == ACTION_UP) {
                 reset (v);
@@ -597,7 +525,11 @@ public class ContentFragment extends Fragment implements OnThemeChangedListener,
             mXAnimator.setDuration (getResources ().getInteger (android.R.integer.config_shortAnimTime));
             mXAnimator.addUpdateListener (animation -> {
                 mX = (float) animation.getAnimatedValue ();
+
+                mPx = mViewWidth - (mX + v.getWidth () / 2 - mViewWidth / 2) / mViewWidth / 2 * getPx (getContext (), 256);
+
                 v.setX (mX);
+                mPlaylistView.setX (mPx);
             });
 
             if (mYAnimator != null && mYAnimator.isRunning ()) mYAnimator.cancel ();

@@ -11,4 +11,7 @@
     </plurals>
     <!-- TODO: Remove or change this placeholder text -->
     <string name="hello_blank_fragment">Hello blank fragment</string>
+
+    <string name="album_tab_title">Album</string>
+    <string name="artist_tab_title">Artist</string>
 </resources>

@@ -26,13 +26,23 @@ public class AppRepo {
         return sInstance;
     }
 
+    String r;
+
+    Queue <String> queue = new LinkedList <> ();
+    List <String> tracks = new ArrayList <> ();
+
     public void getNextTrack () {
         //fetch data
 
-        String tempTrack = "6KEO499uUuvv65wAfOltod";
+        String t1 = "37lsV513gD04gFvKIPCw4N";
+
+        String t2 = "5rurZZeggozpAZIHbI55cm";
+        String t3 = "0rI56S1biB0efYypn7eNpP";
+
+        r = t1;
 
         for (Listener l : mListeners) {
-            l.onReturnNextTrack (tempTrack);
+            l.onReturnNextTrack (r);
         }
     }
 

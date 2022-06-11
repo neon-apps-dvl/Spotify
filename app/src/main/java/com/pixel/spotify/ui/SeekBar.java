@@ -21,14 +21,10 @@ public class SeekBar extends androidx.appcompat.widget.AppCompatSeekBar {
     }
 
     @Override
-    protected void onMeasure (int widthMeasureSpec, int heightMeasureSpec) {
-        super.onMeasure (widthMeasureSpec, heightMeasureSpec);
+    protected void onSizeChanged (int w, int h, int oldw, int oldh) {
+        super.onSizeChanged (w, h, oldw, oldh);
 
-        int minw = getPaddingLeft () + getPaddingRight () + getSuggestedMinimumWidth ();
-        int w = resolveSizeAndState (minw, widthMeasureSpec, 1);
 
-        int minh = (int) (64 * getResources ().getDisplayMetrics ().density);
-        int h = resolveSizeAndState (minh, heightMeasureSpec, 0);
     }
 
     public void seekTo (@FloatRange (from = 0, to = 1) float position) {
