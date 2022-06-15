@@ -5,6 +5,8 @@ import static com.google.android.material.bottomsheet.BottomSheetBehavior.STATE_
 import static neon.pixel.components.Components.getPx;
 import static neon.pixel.components.Components.getPxF;
 
+import android.animation.ArgbEvaluator;
+import android.animation.ValueAnimator;
 import android.content.Context;
 import android.content.res.ColorStateList;
 import android.graphics.Bitmap;
@@ -17,6 +19,7 @@ import android.util.AttributeSet;
 import android.util.TypedValue;
 import android.view.LayoutInflater;
 import android.view.View;
+import android.view.ViewGroup;
 import android.view.ViewOutlineProvider;
 import android.widget.TextView;
 
@@ -56,15 +59,9 @@ public class MediaControlsView extends CoordinatorLayout {
 
     private static final int CORNERS_DP = 24;
 
-    private Track mTrack;
-    private int mColor;
-
-    private String mTrackName;
-    private String mArtists;
-    private String mAlbum;
-    private long mDuration;
-
     private boolean mIsPlaying = false;
+
+    private TrackWrapper mTrack;
 
     private CoordinatorLayout mContainer;
     private CoordinatorLayout mView;
@@ -85,6 +82,18 @@ public class MediaControlsView extends CoordinatorLayout {
             R.string.album_tab_title,
             R.string.artist_tab_title
     };
+
+    private int mSurfaceColor;
+    private int mPrimaryColor;
+    private int mSecondaryColor;
+    private int mTertiaryColor;
+    private int mRippleColor;
+
+    private int mNextSurfaceColor;
+    private int mNextPrimaryColor;
+    private int mNextSecondaryColor;
+    private int mNextTertiaryColor;
+    private int mNextRippleColor;
 
     private AlbumView mAlbumView;
     private List <ArtistView> mArtistViews;
@@ -174,12 +183,15 @@ public class MediaControlsView extends CoordinatorLayout {
     }
 
     public void setTrack (TrackWrapper wrappedTrack) {
+        mTrack = wrappedTrack;
+
         Track track = wrappedTrack.track;
         Bitmap bitmap = wrappedTrack.thumbnail;
 
         List <View> tabs = new ArrayList <> ();
 
         mAlbumView = new AlbumView (getContext ());
+        mAlbumView.setLayoutParams (new ViewGroup.LayoutParams (-1, -1));
         tabs.add (mAlbumView);
 
         mArtistViews.clear ();
@@ -260,8 +272,156 @@ public class MediaControlsView extends CoordinatorLayout {
 //        }
     }
 
+    public void createNextColorSet (Bitmap bitmap) {
+        int color = Palette.from (bitmap).generate ()
+                .getDominantSwatch ()
+                .getRgb ();
+
+        Hct surfaceColor = Hct.fromInt (color);
+        surfaceColor.setTone (10);
+        mNextSurfaceColor = surfaceColor.toInt ();
+
+        Hct primaryColor = Hct.fromInt (color);
+        primaryColor.setTone (90);
+
+        mNextPrimaryColor = primaryColor.toInt ();
+
+        Argb c = Argb.from (primaryColor.toInt ());
+        c.setAlpha (0.6f * 255);
+        mNextSecondaryColor = c.toInt ();
+
+        c.setAlpha (0.24f * 255);
+        mNextTertiaryColor = c.toInt ();
+
+        c.setAlpha (0.16f * 255);
+        mNextRippleColor = c.toInt ();
+    }
+
+    public void nextTrack (TrackWrapper wrappedTrack) {
+        mTrack = wrappedTrack;
+
+        Track track = wrappedTrack.track;
+        Bitmap bitmap = wrappedTrack.thumbnail;
+
+        List <View> tabs = new ArrayList <> ();
+
+        mAlbumView = new AlbumView (getContext ());
+        mAlbumView.setLayoutParams (new ViewGroup.LayoutParams (-1, -1));
+        tabs.add (mAlbumView);
+
+        mArtistViews.clear ();
+
+        for (ArtistSimple artist : track.artists) {
+            ArtistView artistView = new ArtistView (getContext ());
+            mArtistViews.add (artistView);
+        }
+
+        tabs.addAll (mArtistViews);
+
+        Adapter adapter = new Adapter ();
+        adapter.setItems (tabs);
+        mViewPager.setAdapter (adapter);
+
+        new TabLayoutMediator (mTabLayout, mViewPager, (tab, position) -> {
+            if (position == 0) return;
+
+            tab.setText (track.artists.get (position - 1) .name);
+//                tab.setText (track.album.name); // i love you so fucking much
+        }).attach ();
+
+        SpannableString trackName = new SpannableString (track.name + " "  + track.artists.get (0).name);
+        SpannableString albumTabTitle = new SpannableString ("From " + track.album.name);
+
+        createNextColorSet (bitmap);
+
+        ValueAnimator surfaceAnimator = ValueAnimator.ofObject (new ArgbEvaluator (), mSurfaceColor, mNextSurfaceColor);
+        surfaceAnimator.setDuration (getResources ().getInteger (android.R.integer.config_shortAnimTime));
+        surfaceAnimator.addUpdateListener (animation -> {
+            mSecondaryColor = (int) animation.getAnimatedValue ();
+
+            Argb temp = Argb.from (mSecondaryColor);
+            temp.setAlpha (0.6f * 255);
+            mSecondaryColor = temp.toInt ();
+
+            mContent.setBackgroundTintList (new ColorStateList (new int[][] {{}}, new int[] {mSecondaryColor}));
+        });
+        surfaceAnimator.start ();
+
+        ValueAnimator primaryAnimator = ValueAnimator.ofObject (new ArgbEvaluator (), mPrimaryColor, mNextPrimaryColor);
+        primaryAnimator.setDuration (getResources ().getInteger (android.R.integer.config_shortAnimTime));
+        primaryAnimator.addUpdateListener (animation -> {
+            mPrimaryColor = (int) animation.getAnimatedValue ();
+
+            trackName.setSpan (new ForegroundColorSpan ((int) animation.getAnimatedValue ()), 0, track.name.length (), Spanned.SPAN_INCLUSIVE_INCLUSIVE);
+            mTrackNameView.setText (trackName);
+            mTrackNameView.setAutoSizeTextTypeUniformWithConfiguration (getPx (getContext (), 16), getPx (getContext (), 32), 1, TypedValue.COMPLEX_UNIT_PX);
+
+            mPlayButton.setIconTint (new ColorStateList (new int[][] {{}}, new int[] {(int) animation.getAnimatedValue ()}));
+
+            mSeekBar.setProgressTintList (new ColorStateList (new int[][]{{}}, new int[] {(int) animation.getAnimatedValue ()}));
+            mSeekBar.setThumbTintList (new ColorStateList (new int[][]{{}}, new int[] {(int) animation.getAnimatedValue ()}));
+
+            mTabLayout.setTabTextColors (mSecondaryColor, (int) animation.getAnimatedValue ());
+
+            mTabLayout.setSelectedTabIndicatorColor (mPrimaryColor);
+
+            albumTabTitle.setSpan (new ForegroundColorSpan (mPrimaryColor), 5, albumTabTitle.length (), Spanned.SPAN_INCLUSIVE_INCLUSIVE);
+        });
+        primaryAnimator.start ();
+
+        ValueAnimator secondaryAnimator = ValueAnimator.ofObject (new ArgbEvaluator (), mSecondaryColor, mNextSecondaryColor);
+        secondaryAnimator.setDuration (getResources ().getInteger (android.R.integer.config_shortAnimTime));
+        secondaryAnimator.addUpdateListener (animation -> {
+            mSecondaryColor = (int) animation.getAnimatedValue ();
+
+            trackName.setSpan (new ForegroundColorSpan (mSecondaryColor), track.name.length () + 1, trackName.length (), Spanned.SPAN_INCLUSIVE_INCLUSIVE);
+            mTrackNameView.setText (trackName);
+            mTrackNameView.setAutoSizeTextTypeUniformWithConfiguration (getPx (getContext (), 16), getPx (getContext (), 32), 1, TypedValue.COMPLEX_UNIT_PX);
+
+            mTabLayout.setTabTextColors (mSecondaryColor, mPrimaryColor);
+
+            albumTabTitle.setSpan (new ForegroundColorSpan (mSecondaryColor), 0, 4, Spanned.SPAN_INCLUSIVE_INCLUSIVE);
+        });
+        secondaryAnimator.start ();
+
+        ValueAnimator tertiaryAnimator = ValueAnimator.ofObject (new ArgbEvaluator (), mTertiaryColor, mNextTertiaryColor);
+        tertiaryAnimator.setDuration (getResources ().getInteger (android.R.integer.config_shortAnimTime));
+        tertiaryAnimator.addUpdateListener (animation -> {
+            mTertiaryColor = (int) animation.getAnimatedValue ();
+
+            mSeekBar.setProgressBackgroundTintList (new ColorStateList (new int[][]{{}}, new int[] {mTertiaryColor}));
+
+            mProgressView.setTextColor (mTertiaryColor);
+            mDurationView.setTextColor (mTertiaryColor);
+        });
+        tertiaryAnimator.start ();
+
+        ValueAnimator rippleAnimator = ValueAnimator.ofObject (new ArgbEvaluator (), mRippleColor, mNextRippleColor);
+        rippleAnimator.setDuration (getResources ().getInteger (android.R.integer.config_shortAnimTime));
+        rippleAnimator.addUpdateListener (animation -> {
+            mRippleColor = (int) animation.getAnimatedValue ();
+
+            mPlayButton.setRippleColor (new ColorStateList (new int[][] {{}}, new int[] {mRippleColor}));
+
+        });
+        rippleAnimator.start ();
+
+        mProgressView.setText ("00:00");
+        mDurationView.setText (TimeUnit.MILLISECONDS.toMinutes (track.duration_ms)
+                + ":"
+                + (TimeUnit.MILLISECONDS.toSeconds(track.duration_ms) -
+                TimeUnit.MINUTES.toSeconds(TimeUnit.MILLISECONDS.toMinutes(track.duration_ms))));
+
+        mTabLayout.getTabAt (0).setText (albumTabTitle);
+
+//        for (int i = 0; i < track.artists.size (); i ++) {
+//            mTabLayout.getTabAt (i + 1).setText (track.artists.get (i).name);
+//        }
+    }
+
+
     public void setAlbum (AlbumWrapper album) {
-        mAlbumView.setAlbum (album);
+        mAlbumView.setAlbum (album, mTrack.track.id);
     }
 
     public void addBottomSheetCallback (BottomSheetBehavior.BottomSheetCallback c) {

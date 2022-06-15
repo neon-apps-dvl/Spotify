@@ -75,6 +75,8 @@ public class ContentFragment extends Fragment implements OnThemeChangedListener,
     private ImageView mPlaylistView;
     private MediaControlsView mMediaControlsView;
 
+    private Object mAlbumLock;
+
     @Override
     public void onCreate (Bundle savedInstanceState) {
         super.onCreate (savedInstanceState);
@@ -148,7 +150,8 @@ public class ContentFragment extends Fragment implements OnThemeChangedListener,
             Bitmap surfaceBitmap = BitmapTools.from (trackBitmap, (int) x, 0, (int) w, trackBitmap.getHeight ());
             mSurfaceView.setImageBitmap (surfaceBitmap);
 
-            mMediaControlsView.setTrack (track);
+            //mMediaControlsView.setTrack (track);
+            mMediaControlsView.nextTrack (track);
 
             DynamicTheme.getTheme (-1)
                     .setColor (ColorProfile.PRIMARY, Palette.from (trackBitmap).generate ()
@@ -190,12 +193,14 @@ public class ContentFragment extends Fragment implements OnThemeChangedListener,
 
             @Override
             public void onStateChanged (@NonNull View bottomSheet, int newState) {
-                if (newState == STATE_EXPANDED) {
+                if (newState == STATE_EXPANDED && mAlbumLock == null) {
+                    mAlbumLock = new Object ();
+
                     SpotifyServiceAdapter.getInstance ()
                             .getAlbum (mTrack.track.album.id, new Callback <Album> () {
                                 @Override
                                 public void success (Album album, Response response) {
-                                    AlbumWrapper albumWrapper = new AlbumWrapper (album, null);
+                                    AlbumWrapper albumWrapper = new AlbumWrapper (album, mTrack.thumbnail);
 
                                     Log.e ("ALBUM", "album: " + album.name);
 
@@ -214,7 +219,7 @@ public class ContentFragment extends Fragment implements OnThemeChangedListener,
             public void onSlide (@NonNull View bottomSheet, float slideOffset) {
                 int dy = (int) (getView ().getHeight () / 2 - mTrackView.getHeight () / 2 - mMediaControlsView.getY () + mTrackView.getHeight () * 1f);
                 int sy = (int) (slideOffset * dy);
-                int y = (int) (getView ().getHeight () / 2 - mTrackView.getHeight () / 2 - sy);
+                int y = getView ().getHeight () / 2 - mTrackView.getHeight () / 2 - sy;
 
                 mTrackView.setY (y);
                 mTrackView.setScaleX (1 - slideOffset * 0.5f);
@@ -253,10 +258,12 @@ public class ContentFragment extends Fragment implements OnThemeChangedListener,
                     public void success (Track track, Response response) {
                         Executors.newSingleThreadExecutor ()
                                 .execute (() -> {
+                                    mAlbumLock = null;
+
                                     Bitmap nextTrackBitmap = BitmapTools.from (track.album.images.get (0).url);
 
                                     if (mNextTrack != null) {
-                                        Log.e ("CF", "next track not null");
+                                        Log.e ("CF", "nextTrack track not null");
 
                                         mTrack = mNextTrack;
                                         mNextTrack = new TrackWrapper (track, nextTrackBitmap);
@@ -264,7 +271,7 @@ public class ContentFragment extends Fragment implements OnThemeChangedListener,
                                         Bitmap trackBitmap = mTrack.thumbnail;
 
                                         Log.e ("CF", "track: " + mTrack.track.name);
-                                        Log.e ("CF", "next track: " + mNextTrack.track.name);
+                                        Log.e ("CF", "nextTrack track: " + mNextTrack.track.name);
 
                                         // perform anim
 
@@ -337,9 +344,8 @@ public class ContentFragment extends Fragment implements OnThemeChangedListener,
                                                 });
                                         // anim end
 
-                                    }
-                                    else {
-                                        Log.e ("CF", "next track null, getting next");
+                                    } else {
+                                        Log.e ("CF", "nextTrack track null, getting nextTrack");
 
                                         mNextTrack = new TrackWrapper (track, nextTrackBitmap);
                                         AppRepo.getInstance ()
